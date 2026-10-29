@@ -29,7 +29,7 @@ docker compose down -v        # stop and delete local data
 | Service | URL |
 |---|---|
 | Game UI | http://localhost:5173 |
-| game-api | http://localhost:8080/healthz, `/v1/hello` |
+| game-api | http://localhost:8080/healthz, `POST /v1/sessions`, `GET /v1/accounts` (see [OpenAPI](docs/contracts/openapi.yaml)) |
 | agent | http://localhost:8000/healthz |
 | Jaeger UI | http://localhost:16686 |
 | Postgres | `localhost:5432` |
@@ -37,6 +37,13 @@ docker compose down -v        # stop and delete local data
 
 `GAME_API_TARGET=native docker compose up --build --wait` runs the GraalVM native image
 instead of the JVM build (slower to build, ~35 MiB at runtime).
+
+Try the API:
+
+```
+TOKEN=$(curl -s -X POST localhost:8080/v1/sessions | jq -r .token)
+curl -s localhost:8080/v1/accounts -H "Authorization: Bearer $TOKEN" | jq
+```
 
 Per-service development (tests, lint) is described in each service's README.
 
