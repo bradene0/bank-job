@@ -1,0 +1,8 @@
+bankjob:
+  secrets:
+    allow-ephemeral: true
+  sessions:
+    max-per-ip-per-hour: 100000
+logging:
+  level:
+    org.testcontainers: warn

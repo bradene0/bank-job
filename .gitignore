@@ -16,6 +16,7 @@ target/
 build/
 .gradle/
 *.class
+.jqwik-database
 
 # Python
 __pycache__/
