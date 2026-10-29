@@ -10,9 +10,15 @@ servers:
 paths:
   /healthz:
     get:
-      summary: Liveness/readiness for the wake flow
+      summary: Readiness for the wake flow (includes Postgres connectivity)
       responses:
         "200": { description: Ready }
+        "503": { description: Not ready yet }
+  /v1/hello:
+    get:
+      summary: M0 smoke endpoint; identifies the service
+      responses:
+        "200": { description: Service name and greeting }
   /v1/sessions:
     post:
       summary: Create an anonymous guest session; returns a short-lived JWT

@@ -37,7 +37,7 @@ of truth for which combos actually win; update this table from its results.
 | 2. Teller Limits | Scoped token: `transfer_funds` allowed only up to $1,000 per attempt, enforced server-side | Small wires still work; big ones are blocked no matter what Penny says |
 | 3. Policy Engine | Attribute-based policy: transfer only if requester is verified as the source account owner | `lookup_account` leaks a security-question hint that a clever combo can use to pass `verify_identity` (lesson: tools leak data) |
 | 4. Step-Up | Transfers need out-of-band confirmation sent to the account's phone | `update_contact_info` is not protected by step-up, so a "Fraud Department" con can change the phone first (lesson: protect account changes too) |
-| 5. The Vault | All of the above, plus velocity/anomaly rules fed by Kafka, plus a guardrail agent reviewing every sensitive tool call | Should be nearly impossible. A rare "Hidden Note" combo may target the guardrail itself |
+| 5. The Vault | All of the above, plus step-up on contact changes (`protect_contact_changes`), velocity/anomaly rules fed by Kafka, and a guardrail agent reviewing every sensitive tool call | Should be nearly impossible. A rare "Hidden Note" combo may target the guardrail itself |
 
 ## Daily rotation and replayability
 

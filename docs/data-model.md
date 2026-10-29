@@ -53,6 +53,17 @@ attempt_cache(level, daily_seed, combo_id, result jsonb, PK(level, daily_seed, c
 
 ## Notes
 
+- **Open issues for M1 (found during M0 review):**
+  - `attempts` is partitioned by `created_at`, but `journal_entries.attempt_id` and
+    `tool_calls.attempt_id` reference `attempts(id)`. PostgreSQL requires a foreign key into
+    a partitioned table to target a unique key that includes the partition key, so these
+    FKs need `(attempt_id, attempt_created_at)` composite keys, or app-enforced integrity
+    (decide in an ADR).
+  - `accounts.version` and `account_balances.version` both exist; one optimistic-lock
+    column (on `account_balances`, the row that changes) is enough.
+  - A single shared `BV-MULE-01` account mixes every player's winnings. Decide between a
+    per-session mule account and scoring from `attempts.amount_cents` only.
+
 - Indexes: `postings(account_id)`, `postings(entry_id)`, `outbox_events(published_at)
   WHERE published_at IS NULL`, `attempts(session_id)`, `tool_calls(attempt_id)`.
 - IP addresses are stored only as salted hashes.
