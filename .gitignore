@@ -40,3 +40,9 @@ load-tests/out/
 .DS_Store
 .idea/
 .vscode/
+
+# Local planning and agent instructions (kept on disk, not published)
+CLAUDE.md
+docs/milestones.md
+docs/progress.md
+docs/setup-checklist.md
