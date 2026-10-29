@@ -107,11 +107,35 @@ jobs:
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          context: services/game-api
+          context: .
+          file: services/game-api/Dockerfile
           target: native
           push: false
+          load: true
+          tags: bankjob/game-api:native
           cache-from: type=gha,scope=native-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=native-${{ matrix.arch }}
+      # Reflection and proxy problems only show up when the binary runs, so exercise it
+      # against a real Postgres: migrations, JPA, JWT signing and verification, problem JSON.
+      - name: Smoke test the native binary
+        run: |
+          docker network create smoke
+          docker run -d --name pg --network smoke -e POSTGRES_PASSWORD=smoke postgres:18.6-alpine
+          until docker exec pg pg_isready -q -U postgres; do sleep 1; done
+          docker run -d --name api --network smoke -p 127.0.0.1:8080:8080 \
+            -e POSTGRES_HOST=pg -e POSTGRES_DB=postgres -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=smoke -e BANKJOB_ALLOW_EPHEMERAL_SECRETS=true \
+            bankjob/game-api:native
+          for _ in $(seq 1 60); do curl -fsS http://127.0.0.1:8080/healthz && break; sleep 1; done
+          TOKEN=$(curl -fsS -X POST http://127.0.0.1:8080/v1/sessions | jq -r .token)
+          curl -fsS http://127.0.0.1:8080/v1/accounts -H "Authorization: Bearer ${TOKEN}" \
+            | jq -e '.accounts | length == 7'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v1/accounts/BV-EQUITY-01 \
+            -H "Authorization: Bearer ${TOKEN}")" = 404
+          if docker logs api 2>&1 | grep -q ' ERROR '; then docker logs api; exit 1; fi
+      - name: Native logs on failure
+        if: failure()
+        run: docker logs api || true
 
   compose:
     # The M0 definition of done, automated: fresh checkout -> .env from the example ->

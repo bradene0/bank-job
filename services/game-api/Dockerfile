@@ -4,8 +4,9 @@
 #   jvm    - default; fast local builds for `docker compose up`
 #   native - GraalVM native image; used in production and compiled in CI
 #
-#   docker build --target jvm    -t game-api:jvm    .
-#   docker build --target native -t game-api:native .
+# The build context is the repo root, because content/ (tiles, levels) ships inside the app:
+#   docker build -f services/game-api/Dockerfile --target jvm    -t game-api:jvm    .
+#   docker build -f services/game-api/Dockerfile --target native -t game-api:native .
 
 ARG TEMURIN_JDK=eclipse-temurin:25.0.5_8-jdk-noble
 ARG TEMURIN_JRE=eclipse-temurin:25.0.5_8-jre-noble
@@ -16,22 +17,24 @@ ARG RUNTIME_BASE=ubuntu:24.04
 FROM ${TEMURIN_JDK} AS build-jvm
 # The Maven wrapper needs unzip to use the checksum-pinned .zip distribution.
 RUN apt-get update && apt-get install -y --no-install-recommends unzip && rm -rf /var/lib/apt/lists/*
-WORKDIR /src
-COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
+WORKDIR /src/services/game-api
+COPY services/game-api/.mvn/ .mvn/
+COPY services/game-api/mvnw services/game-api/pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q dependency:go-offline
-COPY src/ src/
+COPY content/ /src/content/
+COPY services/game-api/src/ src/
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q package -DskipTests \
  && java -Djarmode=tools -jar target/game-api-*.jar extract --layers --launcher --destination /extracted
 
 # ---------- Native build ----------
 FROM ${GRAALVM} AS build-native
 RUN microdnf install -y unzip && microdnf clean all
-WORKDIR /src
-COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
+WORKDIR /src/services/game-api
+COPY services/game-api/.mvn/ .mvn/
+COPY services/game-api/mvnw services/game-api/pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q -Pnative dependency:go-offline
-COPY src/ src/
+COPY content/ /src/content/
+COPY services/game-api/src/ src/
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -Pnative native:compile -DskipTests
 
 # ---------- JVM runtime ----------
@@ -52,7 +55,7 @@ ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
 FROM ${RUNTIME_BASE} AS native
 RUN useradd --system --uid 10001 --no-create-home app
 WORKDIR /app
-COPY --from=build-native /src/target/game-api /app/game-api
+COPY --from=build-native /src/services/game-api/target/game-api /app/game-api
 USER 10001
 EXPOSE 8080
 ENTRYPOINT ["/app/game-api"]
