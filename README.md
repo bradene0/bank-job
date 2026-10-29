@@ -18,12 +18,27 @@ how far each attack got.
 
 ## Run locally
 
+Requires Docker (with Compose v2). Nothing else is needed to run the stack.
+
 ```
-cp .env.example .env   # add your own ANTHROPIC_API_KEY, or set LLM_MODE=stub
-docker compose up
+cp .env.example .env          # defaults to LLM_MODE=stub: no API key, no token spend
+docker compose up --wait      # builds images; returns when every service is healthy
+docker compose down -v        # stop and delete local data
 ```
 
-(Exact commands are finalized in milestone M0.)
+| Service | URL |
+|---|---|
+| Game UI | http://localhost:5173 |
+| game-api | http://localhost:8080/healthz, `/v1/hello` |
+| agent | http://localhost:8000/healthz |
+| Jaeger UI | http://localhost:16686 |
+| Postgres | `localhost:5432` |
+| Kafka | `localhost:29092` |
+
+`GAME_API_TARGET=native docker compose up --build --wait` runs the GraalVM native image
+instead of the JVM build (slower to build, ~35 MiB at runtime).
+
+Per-service development (tests, lint) is described in each service's README.
 
 ## Docs
 
