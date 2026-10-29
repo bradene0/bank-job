@@ -1,31 +1,131 @@
 openapi: 3.1.0
 info:
   title: Bank Job API
-  version: 0.1.0
+  version: 0.2.0
   description: >
-    Starting contract, expanded in M1–M3 and kept in sync with
-    the code (validated in CI with Schemathesis).
+    Kept in sync with the code and checked in CI with Schemathesis against the running
+    compose stack. Operations tagged `planned` are designed but not implemented yet, and
+    are excluded from the contract run until they ship.
 servers:
   - url: https://live.bankjob.bradenevans.dev
+tags:
+  - name: health
+  - name: sessions
+  - name: accounts
+  - name: planned
+    description: Not implemented yet; excluded from contract tests.
+
 paths:
   /healthz:
     get:
+      tags: [health]
       summary: Readiness for the wake flow (includes Postgres connectivity)
+      security: []
       responses:
-        "200": { description: Ready }
-        "503": { description: Not ready yet }
+        "200":
+          description: Ready
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema: { $ref: "#/components/schemas/Health" }
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          description: Not ready yet
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema: { $ref: "#/components/schemas/Health" }
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
   /v1/hello:
     get:
-      summary: M0 smoke endpoint; identifies the service
+      tags: [health]
+      summary: Smoke endpoint; identifies the service
+      security: []
       responses:
-        "200": { description: Service name and greeting }
+        "200":
+          description: Service name and greeting
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [service, message]
+                properties:
+                  service: { type: string, const: game-api }
+                  message: { type: string }
+
   /v1/sessions:
     post:
-      summary: Create an anonymous guest session; returns a short-lived JWT
+      tags: [sessions]
+      summary: Create an anonymous guest session and its private branch; returns a JWT
+      description: >
+        No request body and no login. Each session gets its own copy of the Brassvale branch
+        (customers, accounts, opening balances), so players never affect each other.
+        Rate-limited per client IP.
+      security: []
       responses:
-        "201": { description: Session created }
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionCreated" }
+        "429":
+          description: Too many sessions from this address
+          headers:
+            Retry-After:
+              description: Seconds until the limit resets
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
+  /v1/accounts:
+    get:
+      tags: [accounts]
+      summary: The caller's branch accounts with current balances
+      security: [{ guestJwt: [] }]
+      responses:
+        "200":
+          description: Accounts in the caller's session, ordered by number
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [accounts]
+                properties:
+                  accounts:
+                    type: array
+                    items: { $ref: "#/components/schemas/Account" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/accounts/{number}:
+    get:
+      tags: [accounts]
+      summary: One account in the caller's branch
+      security: [{ guestJwt: [] }]
+      parameters:
+        - name: number
+          in: path
+          required: true
+          schema: { type: string, examples: [BV-MULE-01] }
+      responses:
+        "200":
+          description: The account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Account" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404":
+          description: No such account in this session
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
   /v1/attempts:
     post:
+      tags: [planned]
       summary: Submit an attempt (tile IDs only)
       security: [{ guestJwt: [] }]
       requestBody:
@@ -38,21 +138,86 @@ paths:
         "400": { description: Invalid tile IDs or level }
         "429": { description: Nerve budget or rate limit exhausted }
         "503": { description: Over budget or degraded; client should use replay mode }
+
   /v1/traces/{traceId}:
     get:
+      tags: [planned]
       summary: Simplified trace for the "Under the hood" panel
+      security: [{ guestJwt: [] }]
       parameters:
         - { name: traceId, in: path, required: true, schema: { type: string } }
       responses:
         "200": { description: Spans }
+
   /v1/leaderboard:
     get:
+      tags: [planned]
       summary: Top scores (Kafka projection)
+      security: []
       responses:
         "200": { description: Leaderboard }
+
 components:
   securitySchemes:
     guestJwt:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: >
+        ES256 token from POST /v1/sessions. Subject is the session id; audience
+        `bankjob-web`; scope `player`; valid for 2 hours.
+
+  responses:
+    Unauthorized:
+      description: Missing, invalid or expired token
+      headers:
+        WWW-Authenticate:
+          schema: { type: string }
+
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [UP, DOWN, OUT_OF_SERVICE, UNKNOWN] }
+
+    SessionCreated:
+      type: object
+      additionalProperties: false
+      required: [sessionId, token, tokenType, expiresAt, nerve]
+      properties:
+        sessionId: { type: string, format: uuid }
+        token: { type: string, description: ES256-signed JWT }
+        tokenType: { type: string, const: Bearer }
+        expiresAt: { type: string, format: date-time }
+        nerve:
+          description: Attempts remaining per level, keyed by level id
+          type: object
+          additionalProperties: false
+          required: ["1", "2", "3", "4", "5"]
+          patternProperties:
+            "^[1-5]$": { type: integer, minimum: 0 }
+
+    Account:
+      type: object
+      additionalProperties: false
+      required: [number, kind, owner, balanceCents, currency]
+      properties:
+        number: { type: string, examples: [BV-VAULT-01] }
+        kind: { type: string, enum: [checking, vault, mule] }
+        owner:
+          description: Customer display name; null for the player's mule account
+          type: [string, "null"]
+        balanceCents: { type: integer, format: int64, minimum: 0 }
+        currency: { type: string, const: USD }
+
+    Problem:
+      description: RFC 9457 problem details
+      type: object
+      required: [status, title]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
