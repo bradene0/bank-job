@@ -46,7 +46,7 @@ live.bankjob.bradenevans.dev  (Cloudflare proxy → EC2 t4g.large, k3s, Traefik)
   ├─ agent (Python): Penny (teller) + guardrail agent; MCP client; calls Anthropic API
   ├─ kafka (single broker, KRaft)
   ├─ postgres (PVC on EBS)
-  ├─ otel-collector → jaeger (in-memory or Badger storage, short retention)
+  ├─ jaeger v2 (also the OTLP collector, ADR-0007; in-memory or Badger storage, short retention)
   └─ idle-reaper (CronJob): stops the instance after 30 idle minutes
 ```
 
