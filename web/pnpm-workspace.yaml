@@ -1,0 +1,2 @@
+# Supply-chain cooldown: never resolve a release younger than 7 days (in minutes).
+minimumReleaseAge: 10080
