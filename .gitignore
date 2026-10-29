@@ -1,0 +1,40 @@
+# Secrets
+.env
+*.pem
+dev-keys/
+*.tfvars
+!example.tfvars
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Java
+target/
+build/
+.gradle/
+*.class
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Eval and load-test outputs (published via CI, not committed)
+services/evals/out/
+load-tests/out/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

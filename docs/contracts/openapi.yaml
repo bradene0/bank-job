@@ -1,0 +1,52 @@
+openapi: 3.1.0
+info:
+  title: Bank Job API
+  version: 0.1.0
+  description: >
+    Starting contract, expanded in M1–M3 and kept in sync with
+    the code (validated in CI with Schemathesis).
+servers:
+  - url: https://live.bankjob.bradenevans.dev
+paths:
+  /healthz:
+    get:
+      summary: Liveness/readiness for the wake flow
+      responses:
+        "200": { description: Ready }
+  /v1/sessions:
+    post:
+      summary: Create an anonymous guest session; returns a short-lived JWT
+      responses:
+        "201": { description: Session created }
+  /v1/attempts:
+    post:
+      summary: Submit an attempt (tile IDs only)
+      security: [{ guestJwt: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./attempt-request.schema.json" }
+      responses:
+        "200": { description: Outcome, Penny's reply, tool-call timeline, trace ID }
+        "400": { description: Invalid tile IDs or level }
+        "429": { description: Nerve budget or rate limit exhausted }
+        "503": { description: Over budget or degraded; client should use replay mode }
+  /v1/traces/{traceId}:
+    get:
+      summary: Simplified trace for the "Under the hood" panel
+      parameters:
+        - { name: traceId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Spans }
+  /v1/leaderboard:
+    get:
+      summary: Top scores (Kafka projection)
+      responses:
+        "200": { description: Leaderboard }
+components:
+  securitySchemes:
+    guestJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

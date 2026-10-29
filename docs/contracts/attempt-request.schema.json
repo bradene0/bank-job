@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bankjob.bradenevans.dev/schemas/attempt-request.json",
+  "title": "AttemptRequest",
+  "description": "The only payload the browser may send to submit an attempt. Tile IDs only; no free text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["level", "tiles"],
+  "properties": {
+    "level": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "tiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["persona", "pretext", "technique", "payload"],
+      "properties": {
+        "persona":   { "type": "string", "pattern": "^p[1-6]$" },
+        "pretext":   { "type": "string", "pattern": "^x[1-6]$" },
+        "technique": { "type": "string", "pattern": "^t[1-6]$" },
+        "payload":   { "type": "string", "pattern": "^y[1-4]$" }
+      }
+    }
+  }
+}
