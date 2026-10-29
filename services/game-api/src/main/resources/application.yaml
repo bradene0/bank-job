@@ -8,9 +8,42 @@ spring:
     hikari:
       # Fail fast on a dead DB so readiness flips quickly instead of hanging the probe.
       connection-timeout: 2000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate  # Flyway owns the schema; Hibernate only checks it matches
+    properties:
+      hibernate:
+        # Update rows in primary-key order so concurrent transfers lock balances in the
+        # same order and cannot deadlock each other.
+        order_updates: true
+  mvc:
+    problemdetails:
+      enabled: true
+  servlet:
+    multipart:
+      # The API takes JSON or nothing; never parse uploads (a malformed multipart header
+      # used to crash requests with a 500).
+      enabled: false
 
 server:
   port: 8080
+
+bankjob:
+  jwt:
+    issuer: bankjob-game-api
+    audience: bankjob-web
+    ttl: 2h
+    signing-key-path: ${JWT_SIGNING_KEY_PATH:}
+  secrets:
+    # Safe default: refuse to start without real secrets. Compose and tests opt in.
+    allow-ephemeral: ${BANKJOB_ALLOW_EPHEMERAL_SECRETS:false}
+  sessions:
+    max-per-ip-per-hour: ${SESSIONS_MAX_PER_IP_PER_HOUR:30}
+    ip-hash-salt: ${IP_HASH_SALT:}
+    trust-cf-connecting-ip: ${TRUST_CF_CONNECTING_IP:false}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 management:
   endpoints:
