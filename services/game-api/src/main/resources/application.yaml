@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: game-api
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:bankjob}
+    username: ${POSTGRES_USER:bankjob}
+    password: ${POSTGRES_PASSWORD:}
+    hikari:
+      # Fail fast on a dead DB so readiness flips quickly instead of hanging the probe.
+      connection-timeout: 2000
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+          # The wake flow and compose poll /healthz (docs/contracts/openapi.yaml).
+          additional-path: "server:/healthz"
