@@ -1,0 +1,9 @@
+# Used for web/Dockerfile with the repo root as context: send only what the build needs.
+*
+!content/
+!web/
+web/node_modules/
+web/dist/
+web/coverage/
+web/playwright-report/
+web/test-results/

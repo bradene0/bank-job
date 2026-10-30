@@ -155,7 +155,9 @@ services:
     mem_limit: 256m
 
   web:
-    build: ./web
+    build:
+      context: . # repo root: the game bundles content/ (labels and rules, no fragments)
+      dockerfile: web/Dockerfile
     image: bankjob/web:local
     ports:
       - "127.0.0.1:5173:8080"

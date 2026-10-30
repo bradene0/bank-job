@@ -11,7 +11,8 @@
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-    "strict": true
+    "strict": true,
+    "allowImportingTsExtensions": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "content-plugin.ts", "content-plugin.test.ts", "playwright.config.ts", "e2e"]
 }
