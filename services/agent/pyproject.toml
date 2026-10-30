@@ -4,13 +4,17 @@ version = "0.1.0"
 description = "Penny (teller agent) and the guardrail agent for Bank Job."
 requires-python = ">=3.14,<3.15"
 dependencies = [
+    "anthropic>=1",
     "fastapi>=0.160",
+    "mcp>=1",
+    "pydantic>=2.14.1",
     "uvicorn>=0.50",
 ]
 
 [dependency-groups]
 dev = [
     "httpx2>=2.16",
+    "hypothesis>=6.170.8",
     "mypy>=2.0",
     "pytest>=9.0",
     "ruff>=0.17",
@@ -32,7 +36,7 @@ target-version = "py314"
 select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+"tests/**" = ["S101", "S105"]  # asserts; fake tokens
 
 [tool.mypy]
 strict = true
