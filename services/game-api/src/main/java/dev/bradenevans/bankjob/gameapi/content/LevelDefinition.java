@@ -2,13 +2,13 @@ package dev.bradenevans.bankjob.gameapi.content;
 
 /**
  * One level from content/levels.yaml. The controls are enforced by the policy engine, never by the
- * model.
+ * model. {@code points} is what cracking the level is worth (docs/security-and-levels.md).
  */
 public record LevelDefinition(
     int id,
     String name,
     int nerve,
-    int multiplier,
+    int points,
     Controls controls,
     String intendedGap,
     String lesson) {

@@ -229,15 +229,17 @@ class OutboxKafkaOutageIT {
 
     Map<String, Object> board =
         jdbc.sql(
-                "SELECT attempts_used, stolen_cents, score FROM leaderboard"
+                "SELECT attempts_used, stolen_cents, score, levels_cracked FROM leaderboard"
                     + " WHERE session_id = :session")
             .param("session", session)
             .query()
             .singleRow();
     assertThat(board.get("attempts_used")).isEqualTo(heists);
     assertThat(board.get("stolen_cents")).isEqualTo(heists * CENTS_PER_ATTEMPT);
-    // $1 x level 1's multiplier (1) minus one point per attempt: zero, however many heists.
-    assertThat(board.get("score")).isEqualTo(0L);
+    // Level 1 cracked once, however many heists: its 100 points plus 10 for each of the 8 nerve
+    // left (these attempts bypass the nerve budget). Repeat wins only add to the haul.
+    assertThat(((Number) board.get("levels_cracked")).intValue()).isEqualTo(1);
+    assertThat(board.get("score")).isEqualTo(180L);
   }
 
   private long processed(String consumer, UUID session) {

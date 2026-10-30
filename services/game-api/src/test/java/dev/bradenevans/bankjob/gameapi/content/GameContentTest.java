@@ -72,8 +72,8 @@ class GameContentTest {
     String yaml =
         """
         levels:
-          - { id: 1, name: a, nerve: 1, multiplier: 1 }
-          - { id: 2, name: b, nerve: 1, multiplier: 1 }
+          - { id: 1, name: a, nerve: 1, points: 100 }
+          - { id: 2, name: b, nerve: 1, points: 100 }
         """;
 
     assertThatThrownBy(() -> withOverride(GameContent.LEVELS, yaml))
@@ -85,7 +85,7 @@ class GameContentTest {
     String yaml =
         """
         levels:
-          - { id: 1, name: a, nerve: 0, multiplier: 1 }
+          - { id: 1, name: a, nerve: 0, points: 100 }
         """;
 
     assertThatThrownBy(() -> withOverride(GameContent.LEVELS, yaml)).hasMessageContaining("nerve");

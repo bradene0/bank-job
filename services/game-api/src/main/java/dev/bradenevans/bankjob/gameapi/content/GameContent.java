@@ -118,6 +118,9 @@ public class GameContent {
       if (level.nerve() < 1) {
         throw new IllegalStateException("Level " + level.id() + " must have nerve >= 1");
       }
+      if (level.points() < 1) {
+        throw new IllegalStateException("Level " + level.id() + " must have points >= 1");
+      }
       if (byId.put(level.id(), level) != null) {
         throw new IllegalStateException("Duplicate level id " + level.id());
       }

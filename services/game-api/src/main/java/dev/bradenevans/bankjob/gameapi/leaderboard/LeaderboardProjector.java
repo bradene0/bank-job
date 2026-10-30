@@ -20,14 +20,19 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Leaderboard projection from AttemptResolved events. Score (docs/security-and-levels.md): dollars
- * stolen times the level's multiplier, minus one point per attempt used. Failed runs (outcome
- * {@code error}) refund nerve, so they do not count as attempts.
+ * Leaderboard projection from AttemptResolved events. Score (docs/security-and-levels.md): a
+ * session cracks a level with its first win on it and earns the level's points, plus {@value
+ * #NERVE_BONUS} per nerve it had left on that level. Later wins on a cracked level add to the haul
+ * (stolen cents, the tie-breaker) but earn no points; other outcomes cost nothing. Failed runs
+ * (outcome {@code error}) refund nerve, so they do not count as attempts.
  */
 @Component
 class LeaderboardProjector {
 
   static final String CONSUMER = "leaderboard";
+
+  /** Points per nerve left when a level is cracked. */
+  static final int NERVE_BONUS = 10;
 
   private final ProcessedEvents processed;
   private final JdbcClient jdbc;
@@ -56,37 +61,55 @@ class LeaderboardProjector {
     }
     String outcome = event.text("outcome");
     int level = (int) event.number("level");
-    int multiplier;
+    int levelPoints;
     try {
-      multiplier = content.level(level).multiplier();
+      levelPoints = content.level(level).points();
     } catch (IllegalArgumentException e) {
       throw new MalformedEventException("AttemptResolved.level is not a level");
     }
-    long stolen = "won".equals(outcome) ? event.number("amount_cents") : 0;
-    long scoreDelta = stolen / 100 * multiplier - 1;
+    boolean won = "won".equals(outcome);
+    long stolen = won ? event.number("amount_cents") : 0;
+    // Optional in the contract (added later); an event without it earns no bonus.
+    long nerveLeft = event.optionalNumber("nerve_left", 0);
     UUID session = event.uuid("session_id");
     transactions.executeWithoutResult(
         status -> {
           if (!processed.claim(CONSUMER, event.eventId()) || "error".equals(outcome)) {
             return;
           }
+          // The first win on a level cracks it; the primary key makes a second crack a no-op.
+          int cracked =
+              won
+                  ? jdbc.sql(
+                          """
+                          INSERT INTO leaderboard_levels (session_id, level, points)
+                          VALUES (:session, :level, :points)
+                          ON CONFLICT (session_id, level) DO NOTHING
+                          """)
+                      .param("session", session)
+                      .param("level", level)
+                      .param("points", levelPoints + NERVE_BONUS * nerveLeft)
+                      .update()
+                  : 0;
           jdbc.sql(
                   """
                   INSERT INTO leaderboard (session_id, display_alias, score, best_level,
-                                           attempts_used, stolen_cents)
-                  VALUES (:session, :alias, :score, :best, 1, :stolen)
+                                           attempts_used, stolen_cents, levels_cracked)
+                  VALUES (:session, :alias, :score, :best, 1, :stolen, :cracked)
                   ON CONFLICT (session_id) DO UPDATE SET
                     score = leaderboard.score + excluded.score,
                     best_level = greatest(leaderboard.best_level, excluded.best_level),
                     attempts_used = leaderboard.attempts_used + 1,
                     stolen_cents = leaderboard.stolen_cents + excluded.stolen_cents,
+                    levels_cracked = leaderboard.levels_cracked + excluded.levels_cracked,
                     updated_at = now()
                   """)
               .param("session", session)
               .param("alias", alias(session))
-              .param("score", scoreDelta)
-              .param("best", stolen > 0 ? level : null)
+              .param("score", cracked == 1 ? levelPoints + NERVE_BONUS * nerveLeft : 0)
+              .param("best", won ? level : null)
               .param("stolen", stolen)
+              .param("cracked", cracked)
               .update();
         });
   }

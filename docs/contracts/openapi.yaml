@@ -225,8 +225,10 @@ paths:
       tags: [leaderboard]
       summary: Top crews (projection fed by AttemptResolved events)
       description: >
-        Score is dollars stolen times the level multiplier, minus one point per attempt.
-        Only crews with at least one win are ranked. Entries show an alias, never a session id.
+        A crew cracks a level with its first win on it and scores the level's points (100 to 500)
+        plus 10 per nerve it had left; repeat wins and failed calls score nothing. Ranked by
+        score, then by haul (stolenCents). Only crews with at least one win are ranked. Entries
+        show an alias, never a session id.
       security: []
       responses:
         "200":
@@ -383,13 +385,18 @@ components:
     LeaderboardEntry:
       type: object
       additionalProperties: false
-      required: [rank, alias, score, bestLevel, stolenCents]
+      required: [rank, alias, score, levelsCracked, bestLevel, stolenCents]
       properties:
         rank: { type: integer, minimum: 1 }
         alias: { type: string, pattern: "^Crew-[0-9A-F]{6}$" }
-        score: { type: integer, format: int64 }
+        score: { type: integer, format: int64, minimum: 0 }
+        levelsCracked: { type: integer, minimum: 1, maximum: 5 }
         bestLevel: { type: integer, minimum: 1, maximum: 5, description: Highest level with a win }
-        stolenCents: { type: integer, format: int64, minimum: 0 }
+        stolenCents:
+          type: integer
+          format: int64
+          minimum: 0
+          description: The haul, every cent that reached BV-MULE-01; breaks ties on score
 
     Problem:
       description: RFC 9457 problem details

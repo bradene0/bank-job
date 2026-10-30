@@ -98,7 +98,9 @@ tool_calls(id, attempt_id, attempt_created_at, ordinal, tool, args jsonb,
            latency_ms, created_at, UNIQUE (attempt_id, ordinal),
            FK (attempt_id, attempt_created_at) → attempts)
 leaderboard(session_id PK → sessions, display_alias, score, best_level NULL,
-            attempts_used, stolen_cents, updated_at)            -- Kafka projection
+            attempts_used, stolen_cents, levels_cracked, updated_at)  -- Kafka projection
+leaderboard_levels(session_id → sessions, level, points, cracked_at,
+                   PRIMARY KEY (session_id, level))                -- one row per cracked level
 audit_log(id, event_id UNIQUE NULL, actor, action, target, details jsonb, created_at)
 account_signals(account_id PK, session_id, teller_credits, teller_credit_cents,
                 last_teller_credit_at, updated_at)                -- Kafka projection
@@ -119,14 +121,16 @@ carry no foreign keys into the tables the events came from. Their updates commut
 counts, `greatest()`), so redelivered or reordered events cannot skew them.
 `account_signals` feeds the Level 5 velocity rule (ADR-0013). `leaderboard` gets a row on a
 session's first finished attempt; `best_level` stays NULL until a win, and only rows with a
-win are ranked. `audit_log` gets one row per event (`event_id` is unique).
+win are ranked (score, then `stolen_cents`). A win on a level the session has not cracked yet
+inserts its `leaderboard_levels` row (the primary key makes a second crack a no-op) and adds
+those points to `score`; the nerve bonus comes from `nerve_left` on `AttemptResolved`. `audit_log` gets one row per event (`event_id` is unique).
 
 ## Notes
 
 - Indexes: `postings(account_id)`, `postings(entry_id)`, `outbox_events(created_at) WHERE
   published_at IS NULL`, `outbox_events(topic, message_key)`, `attempts(session_id)`,
   `tool_calls(attempt_id)`, `customers(session_id)`, `sessions(created_at)`,
-  `leaderboard(score DESC) WHERE best_level IS NOT NULL`.
+  `leaderboard(score DESC, stolen_cents DESC) WHERE best_level IS NOT NULL`.
 - IP addresses are stored only as HMAC-SHA256 hashes with a secret salt.
 - Retention (not implemented yet): drop `attempts` partitions and expired sessions older
   than 90 days. Rows referencing an attempt must be removed first (ADR-0010), and the

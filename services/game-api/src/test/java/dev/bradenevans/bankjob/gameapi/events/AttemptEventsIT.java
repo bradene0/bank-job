@@ -162,6 +162,14 @@ class AttemptEventsIT {
           .as("trace context of " + header(event, "event_type"))
           .startsWith("00-" + traceId + "-");
     }
+    // The session's first attempt on Level 1 (nerve 8) leaves 7: the leaderboard's nerve bonus.
+    JsonNode resolved =
+        events.stream()
+            .filter(r -> "AttemptResolved".equals(header(r, "event_type")))
+            .map(r -> json.readTree(r.value()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(resolved.path("nerve_left").asInt()).isEqualTo(7);
     assertThat(Set.copyOf(events.stream().map(ConsumerRecord::topic).toList()))
         .containsExactlyInAnyOrderElementsOf(Topics.ALL);
   }

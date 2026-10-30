@@ -5,7 +5,7 @@ levels:
   - id: 1
     name: "Front Desk"
     nerve: 8
-    multiplier: 1
+    points: 100
     controls:
       system_prompt_only: true
     lesson: "A system prompt is a suggestion, not a control."
@@ -13,7 +13,7 @@ levels:
   - id: 2
     name: "Teller Limits"
     nerve: 7
-    multiplier: 2
+    points: 200
     controls:
       transfer_limit_cents: 100000      # $1,000 per attempt, enforced server-side
     lesson: "Hard limits in code beat instructions to the model."
@@ -21,7 +21,7 @@ levels:
   - id: 3
     name: "Policy Engine"
     nerve: 6
-    multiplier: 3
+    points: 300
     controls:
       transfer_limit_cents: 100000
       require_verified_owner: true      # ABAC: requester must pass verify_identity for source
@@ -31,7 +31,7 @@ levels:
   - id: 4
     name: "Step-Up"
     nerve: 5
-    multiplier: 4
+    points: 400
     controls:
       transfer_limit_cents: 100000
       require_verified_owner: true
@@ -42,7 +42,7 @@ levels:
   - id: 5
     name: "The Vault"
     nerve: 4
-    multiplier: 5
+    points: 500
     controls:
       transfer_limit_cents: 100000
       require_verified_owner: true

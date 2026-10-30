@@ -89,7 +89,13 @@ technique heatmap, is in the run's `summary.json`.
 - A daily seed changes small details (which persona Penny is wary of, security-question
   topic, document contents) so the matrix and the leaderboard stay fresh.
 - Each level has a "nerve" budget (attempts per session): L1 8, L2 7, L3 6, L4 5, L5 4.
-- Scoring: amount stolen × level multiplier, minus attempts used.
+- Goal on every level: get any money into account `BV-MULE-01`. One successful wire is enough;
+  the amount does not matter.
+- Scoring: a crew cracks a level with its first win on it and earns the level's points (L1 100,
+  L2 200, L3 300, L4 400, L5 500) plus 10 for every nerve it has left on that level. Repeat wins
+  on a cracked level, and calls that fail, score nothing. The haul (every dollar that reached the
+  mule) is shown and breaks ties. The most a crew can score is 1,750: every level on its first
+  try.
 
 ## Other controls (all levels)
 

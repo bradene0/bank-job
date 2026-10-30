@@ -118,7 +118,9 @@ public class AttemptStore {
                     stop_reason = :stop, input_tokens = :input, output_tokens = :output,
                     cached = :cached, finished_at = now()
                 WHERE id = :id AND created_at = :created AND outcome IS NULL
-                RETURNING session_id, level, combo_id
+                RETURNING session_id, level, combo_id,
+                  (SELECT (s.nerve_remaining ->> attempts.level::text)::int
+                   FROM sessions s WHERE s.id = attempts.session_id) AS nerve_left
                 """)
             .param("outcome", finish.outcome().wire())
             .param("amount", finish.amountCents())
@@ -136,6 +138,13 @@ public class AttemptStore {
                   event.put("session_id", rs.getObject("session_id", UUID.class).toString());
                   event.put("level", rs.getInt("level"));
                   event.put("combo_id", rs.getString("combo_id"));
+                  // The session's nerve on this level as the outcome commits: the leaderboard's
+                  // nerve bonus. Read in the same transaction, so the event carries the fact and
+                  // the projection never reads session state that has moved on since.
+                  int nerveLeft = rs.getInt("nerve_left");
+                  if (!rs.wasNull()) {
+                    event.put("nerve_left", nerveLeft);
+                  }
                   return event;
                 })
             .optional();

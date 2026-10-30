@@ -87,6 +87,12 @@ public record EventEnvelope(
     }
   }
 
+  /** A number field, or {@code fallback} when it is absent (an optional, later-added field). */
+  public long optionalNumber(String field, long fallback) {
+    JsonNode node = body.get(field);
+    return node == null || node.isNull() ? fallback : number(field);
+  }
+
   public long number(String field) {
     JsonNode node = body.get(field);
     if (node == null || !node.canConvertToExactIntegral()) {
