@@ -127,6 +127,10 @@ management:
       tasks.scheduled: false
   opentelemetry:
     # service.name comes from spring.application.name.
+    # Never map OTEL_* environment variables onto these properties: the native image fixes its
+    # beans at build time, and a builder's OTEL_* variables (BuildKit can set its own) would
+    # pick the exporter baked into the binary. Every setting below is explicit instead.
+    map-environment-variables: false
     tracing:
       export:
         schedule-delay: 1s

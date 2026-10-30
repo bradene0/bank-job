@@ -27,3 +27,12 @@ update this ADR. Do not spend more than a day fighting native-image issues.
 Native compile: ~1 min 35 s, peak 4.1 GiB RAM. Local `docker compose up` uses the JVM
 target by default for fast rebuilds (`GAME_API_TARGET=native` switches); CI compiles the
 native target on amd64 and arm64 for every change.
+
+## Pitfall: build-time conditions (2026-10-29)
+A native image evaluates Spring's `@Conditional` beans when it is built, not when it starts.
+Anything the build environment sets can therefore change which beans the binary contains.
+The first CI build with tracing baked in the OTLP gRPC exporter while the runtime
+configuration said HTTP, and the binary failed at startup; the likely source is OTEL_*
+variables in the CI builder, which Spring Boot maps onto its properties by default. game-api
+sets `management.opentelemetry.map-environment-variables: false` and configures OTLP
+explicitly. The native smoke test in CI is what caught it: the JVM build was unaffected.
