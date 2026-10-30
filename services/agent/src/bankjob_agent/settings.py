@@ -19,7 +19,8 @@ class Settings:
     mcp_url: str = DEFAULT_MCP_URL
     max_tool_calls: int = 8
     llm_timeout_seconds: float = 20.0
-    # Only for tests: point the SDK at a local fake of the Messages API.
+    # Not for production: tests point the SDK at a fake of the Messages API, and live eval runs
+    # at the eval harness's memo proxy (services/evals, Message Batches).
     anthropic_base_url: str | None = None
     # OTLP/HTTP collector base URL (Jaeger, ADR-0007); unset means no span export.
     otlp_endpoint: str | None = None

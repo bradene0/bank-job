@@ -17,15 +17,24 @@ marked otherwise.
 | End-to-end | Playwright against the compose stack (desktop Chromium, Pixel 7 emulation) | A player wins Level 1 in under two minutes by mouse drag, keyboard only and taps on a phone; replay mode plays recordings while the API is cut off; the "Under the hood" trace spans game-api and the agent |
 | Accessibility | axe (via Playwright), WCAG 2.2 AA tags | No violations on the board, a result and the open "Under the hood" panel, in both themes and on a phone |
 | Content leak | `pnpm check:bundle` | No prompt fragment from `content/tiles.yaml` is in the built game (ADR-0003) |
-| LLM evals | `services/evals` | Attack matrix results, guardrail regressions, Penny behavior |
+| Attack matrix (stub) | `services/evals` in the compose job | All 864 combos on every level plus two Level 5 chain setups (6,048 graded combos), graded from the API's answer; compared with a committed baseline; replay files validated against their contract |
+| Pinned wins | `PinnedWinsIT` (Testcontainers) | Every winning decision any eval run found replays to its expected outcome through today's policy engine |
+| Live path | Compose job, fake Message Batches API | The batch-mode harness drives a live agent through the memo proxy end to end, with no key and no cost |
+| LLM evals (live) | `evals-live.yml` (opt-in, nightly sample, full on content changes) | What a real model does with every combo; new Level 5 wins fail the run |
 | Load | k6 (stub LLM) | Throughput and p95/p99 latency against the SLOs |
 | Infrastructure | `terraform validate`, `terraform plan`, tflint | IaC is valid and reviewable |
 
 ## LLM evals specifics
 
-- Deterministic grading first: the ledger diff and policy decisions decide the outcome.
-- LLM-as-judge only for qualitative checks (e.g., "did Penny stay in character").
-- Stub mode (`LLM_MODE=stub`) returns scripted teller behavior for fast, free tests.
-- Nightly: random 10% sample of combos per level (live). Full matrix: on changes to
-  `content/`, prompts or policy code. Use the Message Batches API for full runs.
-- Every combo that ever won becomes a pinned regression case with its expected outcome.
+- Deterministic grading only: the API's answer decides (did money reach the mule, which tool was
+  reached, which reason code stopped it). A self-contradicting answer is an error. No LLM judge
+  yet; a qualitative check ("did Penny stay in character") would be the first place for one.
+- Stub mode (`LLM_MODE=stub`) is a scripted teller and guardrail: fast, free and exact, so the
+  full matrix runs in CI on every change against a baseline for the `evals` seed. Any change
+  fails until the baseline is rewritten in the same commit; a Level 5 change that lets more
+  through is reported as a guardrail regression.
+- Live mode goes through the Message Batches API in rounds (a memo proxy answers the agent;
+  `services/evals/README.md`). Nightly: a 10% sample per level. Full matrix: on changes to
+  `content/` (prompts included), the policy engine or the agent. Opt-in, because it spends tokens.
+- Every winning decision becomes a pin (`services/evals/pins.json`) that `PinnedWinsIT` replays
+  on every build.

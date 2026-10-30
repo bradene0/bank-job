@@ -143,6 +143,23 @@ Kafka headers. Delivery, consumers and failure handling: `docs/contracts/events/
 | p95 end-to-end attempt with live LLM | < 4 s |
 | Wake-to-ready | < 120 s |
 
+## Eval matrix
+
+`services/evals` plays every combo (864 per level) through the public API like a browser, grades
+each from the API's answer, and writes the matrix, a summary and the replay files. Stub mode runs
+in CI on every change. Live mode uses the Message Batches API, in rounds:
+
+```
+harness ──POST /v1/attempts──► game-api ──► agent (live) ──POST /v1/messages──► memo proxy (in the harness)
+   ▲                                │                                            │ known: answer
+   │  503 replay:true ◄─────────────┘ ◄── model unavailable ◄──────────────────── │ new: defer
+   │
+   └── between rounds: deferred calls ──► Message Batches API ──► answers memoized ──► replay the combos
+```
+
+The agent never holds the API key in this setup, and every final play is an ordinary attempt
+through the policy engine and ledger. Details: `services/evals/README.md`.
+
 ## Cost guardrails
 
 - AWS Budget alarm at $20/month (Terraform).

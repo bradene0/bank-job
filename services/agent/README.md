@@ -27,6 +27,7 @@ policy engine, so nothing in this service is a security control.
 | `LLM_MODE` | `stub` | `stub` or `live` |
 | `ANTHROPIC_API_KEY` | | Required in live mode |
 | `ANTHROPIC_MODEL` | `claude-haiku-5-5` | |
+| `ANTHROPIC_BASE_URL` | | Not in production: a fake Messages API in tests, the eval harness's memo proxy in live eval runs |
 | `GAME_API_MCP_URL` | `http://game-api:8080/mcp` | |
 | `PENNY_MAX_TOOL_CALLS` | `8` | Agent-side cap; game-api enforces its own |
 | `LLM_TIMEOUT_SECONDS` | `20` | Per model request |
