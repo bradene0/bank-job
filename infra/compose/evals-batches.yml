@@ -1,0 +1,25 @@
+# Live eval runs through the Message Batches API (services/evals, `bankjob-evals run --batches`).
+#   docker compose -f docker-compose.yml -f infra/compose/evals-batches.yml up -d --wait
+#
+# Penny and the guardrail run as real model clients, but their Messages API is the harness's memo
+# proxy on the host, which answers from batch results. The agent never gets a real key, so a
+# mistake here cannot spend money synchronously; only the harness holds ANTHROPIC_API_KEY.
+services:
+  game-api:
+    environment:
+      LLM_MODE: live
+      # The eval seed, so live results line up with the stub baseline and pinned wins.
+      DAILY_SEED_OVERRIDE: ${DAILY_SEED_OVERRIDE:-evals}
+      # Every combo is a new guest session, and a deferred combo is replayed in another one.
+      SESSIONS_MAX_PER_IP_PER_HOUR: "200000"
+      # game-api's own spend estimate (at full price; batches cost half). Anthropic's workspace
+      # limit is the real backstop.
+      LLM_MONTHLY_BUDGET_CENTS: "5000"
+  agent:
+    environment:
+      LLM_MODE: live
+      ANTHROPIC_API_KEY: placeholder-the-memo-proxy-needs-no-key
+      ANTHROPIC_BASE_URL: http://host.docker.internal:${EVALS_PROXY_PORT:-8765}
+    extra_hosts:
+      # Docker Desktop provides this name; on Linux it maps to the host's bridge address.
+      - host.docker.internal:host-gateway

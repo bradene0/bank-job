@@ -15,11 +15,13 @@ from pathlib import Path
 from typing import Any
 
 import httpx2
+from anthropic import AsyncAnthropic
 
 from bankjob_evals import baseline as baselines
 from bankjob_evals.api import GameApi
+from bankjob_evals.batches import BatchBroker, MemoProxy
 from bankjob_evals.content import content_hash, daily_picks
-from bankjob_evals.matrix import Runner, RunOptions, Setup
+from bankjob_evals.matrix import Job, Runner, RunOptions, Setup
 from bankjob_evals.report import RunInfo, matrix_json, summarize, write_json, write_replays
 from bankjob_evals.run import Plan, run_plan
 
@@ -107,9 +109,33 @@ async def _run(args: argparse.Namespace) -> int:
         concurrency=args.concurrency, record_replays=not args.no_replays, model=model
     )
     api = GameApi(args.api)
+    runner = Runner(api, options)
     started = datetime.now(UTC)
+    usage = None
     try:
-        result = await run_plan(Runner(api, options), plan)
+        if args.batches:
+            if mode != "live":
+                print(BATCH_SETUP_HINT, file=sys.stderr)
+                return 2
+            with MemoProxy(args.out / "memo", args.proxy_bind, args.proxy_port) as proxy:
+                client = AsyncAnthropic(base_url=args.anthropic_base_url, max_retries=3)
+                broker = BatchBroker(client, proxy, poll_seconds=args.poll_seconds)
+                if problem := await _preflight(runner, proxy, plan):
+                    print(problem, file=sys.stderr)
+                    return 2
+                result = await run_plan(
+                    runner, plan, resolve_deferred=broker.resolve, max_rounds=args.max_rounds
+                )
+                usage = broker.usage.as_json() | {
+                    "memoHits": proxy.hits,
+                    "deferrals": proxy.deferrals,
+                }
+        else:
+            if mode == "live":
+                print(
+                    "live mode without --batches: the agent calls the API directly", file=sys.stderr
+                )
+            result = await run_plan(runner, plan)
     finally:
         await api.aclose()
 
@@ -128,8 +154,24 @@ async def _run(args: argparse.Namespace) -> int:
         generated_at=started.isoformat(timespec="seconds").replace("+00:00", "Z"),
         setups=result.setups,
         sample=plan.sample_json(),
+        usage=usage,
     )
     return _finish(args, info, result.rows)
+
+
+BATCH_SETUP_HINT = """batch mode needs the stack in live mode with the agent pointed at the proxy:
+  docker compose -f docker-compose.yml -f infra/compose/evals-batches.yml up -d --wait"""
+
+
+async def _preflight(runner: Runner, proxy: MemoProxy, plan: Plan) -> str | None:
+    """Plays one combo before anything else. If Penny ran without asking the proxy, the agent is
+    calling a real model directly, synchronously and at full price: stop before the matrix does."""
+    row = await runner.play(Job(Setup.FRESH, plan.levels[0], plan.combos_for(plan.levels[0])[0]))
+    if row.grade is not None and not row.cached and proxy.hits + proxy.deferrals == 0:
+        return "the agent answered without the memo proxy; " + BATCH_SETUP_HINT
+    if row.error and not row.deferred:
+        return f"preflight attempt failed: {row.error}"
+    return None
 
 
 def _finish(args: argparse.Namespace, info: RunInfo, rows: list[Any]) -> int:
@@ -210,6 +252,19 @@ def parser() -> argparse.ArgumentParser:
     run.add_argument("--out", type=Path, default=Path("out"))
     run.add_argument("--no-replays", action="store_true", help="skip traces and replay files")
     run.add_argument("--baseline", type=Path, help="compare with a stub baseline")
+    batch = run.add_argument_group(
+        "live mode through the Message Batches API (needs ANTHROPIC_API_KEY)"
+    )
+    batch.add_argument("--batches", action="store_true", help="answer model calls in batches")
+    batch.add_argument("--max-rounds", type=int, default=16, help="batch rounds before giving up")
+    batch.add_argument("--poll-seconds", type=float, default=30.0)
+    batch.add_argument(
+        "--proxy-bind",
+        default="127.0.0.1",
+        help="memo proxy address (0.0.0.0 on Linux, where containers reach the host's bridge IP)",
+    )
+    batch.add_argument("--proxy-port", type=int, default=8765)
+    batch.add_argument("--anthropic-base-url", help="for tests: a fake Message Batches API")
 
     base = sub.add_parser("baseline", help="write a stub baseline from a full stub run")
     base.add_argument("--matrix", type=Path, default=Path("out/matrix.json"))
