@@ -132,12 +132,18 @@ jobs:
             -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093 \
             -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 -e KAFKA_AUTO_CREATE_TOPICS_ENABLE=false \
             apache/kafka:4.4.0
+          # A real collector: the native image fixes its span exporter at build time, so a
+          # runtime switch cannot turn export off, and with nothing on 4318 the exporter logs an
+          # ERROR a few seconds after the first attempt (ADR-0004).
+          docker run -d --name jaeger --network smoke \
+            -v "${PWD}/infra/compose/jaeger.yaml:/etc/jaeger/config.yaml:ro" \
+            jaegertracing/jaeger:2.22.0 --config /etc/jaeger/config.yaml
           until docker exec pg pg_isready -q -U postgres; do sleep 1; done
-          # No agent and no Jaeger here: attempts fall back to replay, and span export is off.
+          # No agent here: attempts fall back to replay.
           docker run -d --name api --network smoke -p 127.0.0.1:8080:8080 \
             -e POSTGRES_HOST=pg -e POSTGRES_DB=postgres -e POSTGRES_USER=postgres \
             -e POSTGRES_PASSWORD=smoke -e BANKJOB_ALLOW_EPHEMERAL_SECRETS=true \
-            -e KAFKA_BOOTSTRAP_SERVERS=kafka:9092 -e MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED=false \
+            -e KAFKA_BOOTSTRAP_SERVERS=kafka:9092 -e OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318 \
             bankjob/game-api:native
           for _ in $(seq 1 60); do curl -fsS http://127.0.0.1:8080/healthz && break; sleep 1; done
           TOKEN=$(curl -fsS -X POST http://127.0.0.1:8080/v1/sessions | jq -r .token)
@@ -158,6 +164,8 @@ jobs:
           done
           test "${AUDITED}" = 2
           curl -fsS http://127.0.0.1:8080/v1/leaderboard | jq -e '.entries | length == 0'
+          # Long enough for the exporter's first sends (1 s schedule, retries) to have happened.
+          sleep 8
           if docker logs api 2>&1 | grep -q ' ERROR '; then docker logs api; exit 1; fi
       - name: Native logs on failure
         if: failure()
