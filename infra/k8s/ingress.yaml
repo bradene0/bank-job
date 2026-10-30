@@ -1,0 +1,23 @@
+# Only the public API. /mcp, actuator and everything else have no route (the tunnel
+# allowlists the same paths in infra/terraform).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: game-api
+  namespace: bankjob
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: live.bankjob.bradenevans.dev
+      http:
+        paths:
+          - path: /v1/
+            pathType: Prefix
+            backend:
+              service: {name: game-api, port: {number: 8080}}
+          - path: /healthz
+            pathType: Exact
+            backend:
+              service: {name: game-api, port: {number: 8080}}

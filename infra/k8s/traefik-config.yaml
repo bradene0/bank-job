@@ -1,0 +1,16 @@
+# k3s's bundled Traefik. Traffic only arrives through cloudflared inside the cluster, so the
+# Service is ClusterIP (servicelb is disabled) and only the plain HTTP entrypoint is used:
+# Cloudflare terminates TLS.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      type: ClusterIP
+    ports:
+      websecure:
+        expose:
+          default: false

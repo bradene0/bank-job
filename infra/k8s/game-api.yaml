@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: game-api
+  namespace: bankjob
+spec:
+  selector: {app: game-api}
+  ports:
+    - port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: game-api
+  namespace: bankjob
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: game-api}
+  template:
+    metadata:
+      labels: {app: game-api}
+    spec:
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: game-api
+          image: game-api
+          env:
+            - {name: POSTGRES_HOST, value: postgres}
+            - {name: POSTGRES_DB, value: bankjob}
+            - {name: POSTGRES_USER, value: bankjob}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: postgres, key: password}
+            - {name: JWT_SIGNING_KEY_PATH, value: /etc/bankjob/jwt/jwt-es256.pem}
+            - name: IP_HASH_SALT
+              valueFrom:
+                secretKeyRef: {name: game-api, key: ip-hash-salt}
+            # Every request arrives through Cloudflare, which sets CF-Connecting-IP.
+            - {name: TRUST_CF_CONNECTING_IP, value: "true"}
+            - {name: CORS_ALLOWED_ORIGINS, value: "https://bankjob.bradenevans.dev"}
+            - {name: LLM_MODE, value: live}
+            - {name: ANTHROPIC_MODEL, value: claude-haiku-5-5}
+            # The game switches to replay mode at 80% of this; the workspace limit is $15.
+            - {name: LLM_MONTHLY_BUDGET_CENTS, value: "1200"}
+            - {name: AGENT_URL, value: "http://agent:8000"}
+            - {name: KAFKA_BOOTSTRAP_SERVERS, value: "kafka:9092"}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://jaeger:4318"}
+            - {name: JAEGER_QUERY_URL, value: "http://jaeger:16686"}
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8080}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: 8080}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {memory: 512Mi}
+          volumeMounts:
+            - name: jwt
+              mountPath: /etc/bankjob/jwt
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: jwt
+          secret:
+            secretName: game-api
+            items:
+              - {key: jwt-es256.pem, path: jwt-es256.pem}
+        - name: tmp
+          emptyDir: {}

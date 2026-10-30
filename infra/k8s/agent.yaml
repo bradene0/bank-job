@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent
+  namespace: bankjob
+spec:
+  selector: {app: agent}
+  ports:
+    - port: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent
+  namespace: bankjob
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: agent}
+  template:
+    metadata:
+      labels: {app: agent}
+    spec:
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: agent
+          image: agent
+          env:
+            - {name: LLM_MODE, value: live}
+            - {name: ANTHROPIC_MODEL, value: claude-haiku-5-5}
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef: {name: agent, key: anthropic-api-key}
+            - {name: GAME_API_MCP_URL, value: "http://game-api:8080/mcp"}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://jaeger:4318"}
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8000}
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            # Near its 256 MiB compose limit under load, so production gets headroom.
+            requests: {cpu: 100m, memory: 384Mi}
+            limits: {memory: 384Mi}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

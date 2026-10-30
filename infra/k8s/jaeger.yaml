@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+  namespace: bankjob
+spec:
+  selector: {app: jaeger}
+  ports:
+    - {name: otlp-http, port: 4318}
+    - {name: query, port: 16686}
+---
+# Jaeger v2 is the OTLP collector and the trace store (ADR-0007); traces are in memory.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: bankjob
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: jaeger}
+  template:
+    metadata:
+      labels: {app: jaeger}
+    spec:
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: jaeger
+          image: jaegertracing/jaeger:2.22.0
+          args: [--config, /etc/jaeger/config.yaml]
+          ports:
+            - containerPort: 4318
+            - containerPort: 16686
+          readinessProbe:
+            httpGet: {path: /status, port: 13133}
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 50m, memory: 256Mi}
+            limits: {memory: 256Mi}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/jaeger
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: jaeger-config

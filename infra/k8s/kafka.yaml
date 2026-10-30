@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: bankjob
+spec:
+  selector: {app: kafka}
+  ports:
+    - port: 9092
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: bankjob
+spec:
+  serviceName: kafka
+  replicas: 1
+  selector:
+    matchLabels: {app: kafka}
+  template:
+    metadata:
+      labels: {app: kafka}
+    spec:
+      # Service links would add KAFKA_PORT and friends, which the image turns into broker
+      # properties.
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: kafka
+          image: apache/kafka:4.4.0
+          env:
+            # Single combined broker + controller in KRaft mode, as in docker-compose.yml.
+            - {name: CLUSTER_ID, value: zfjlZ9g5SaGPvdv06ONEWg}
+            - {name: KAFKA_NODE_ID, value: "1"}
+            - {name: KAFKA_PROCESS_ROLES, value: "broker,controller"}
+            - {name: KAFKA_LISTENERS, value: "INTERNAL://:9092,CONTROLLER://:9093"}
+            - {name: KAFKA_ADVERTISED_LISTENERS, value: "INTERNAL://kafka:9092"}
+            - {name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP, value: "INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"}
+            - {name: KAFKA_INTER_BROKER_LISTENER_NAME, value: INTERNAL}
+            - {name: KAFKA_CONTROLLER_LISTENER_NAMES, value: CONTROLLER}
+            # localhost: the Service has no endpoints until the broker is ready.
+            - {name: KAFKA_CONTROLLER_QUORUM_VOTERS, value: "1@localhost:9093"}
+            - {name: KAFKA_LOG_DIRS, value: /var/lib/kafka/data}
+            - {name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR, value: "1"}
+            - {name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR, value: "1"}
+            - {name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR, value: "1"}
+            - {name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS, value: "0"}
+            # Never auto-create: game-api's outbox relay creates the topics and their DLQs.
+            - {name: KAFKA_AUTO_CREATE_TOPICS_ENABLE, value: "false"}
+            - {name: KAFKA_HEAP_OPTS, value: "-Xms512m -Xmx512m"}
+          ports:
+            - containerPort: 9092
+          # A TCP check: the API-versions tool would follow the advertised address back
+          # through the Service, which has no endpoints until this probe passes.
+          readinessProbe:
+            tcpSocket: {port: 9092}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 200m, memory: 1Gi}
+            limits: {memory: 1Gi}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/kafka/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests: {storage: 5Gi}
