@@ -47,7 +47,7 @@ describe("App", () => {
 
     const result = await screen.findByRole("heading", { name: "The wire went through." });
     expect(result).toHaveFocus();
-    expect(screen.getByText("$200.00 reached BV-MULE-01.")).toBeInTheDocument();
+    expect(screen.getByText("$200.00 reached your account.")).toBeInTheDocument();
     // Penny's words are text, never markup.
     expect(screen.getByText(/<b>Have a lovely day!<\/b>/)).toBeInTheDocument();
     const attempt = backend.requests.find((r) => r.url.endsWith("/v1/attempts"));

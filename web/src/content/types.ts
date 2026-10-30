@@ -23,7 +23,8 @@ export interface LevelView {
   id: number;
   name: string;
   nerve: number;
-  multiplier: number;
+  /** What cracking the level is worth (plus the nerve bonus). */
+  points: number;
   lesson: string;
   /** The controls this level enforces, in plain words. The intended gap is never shipped. */
   controls: string[];

@@ -19,7 +19,7 @@ test("mouse: drag tiles into the con bar and win Level 1", async ({ page }, info
     () => page.getByRole("button", { name: "Make the call" }).click(),
   );
   expect(Date.now() - started).toBeLessThan(TWO_MINUTES);
-  await expect(page.getByText("$200.00 reached BV-MULE-01.")).toBeVisible();
+  await expect(page.getByText("$200.00 reached your account.")).toBeVisible();
   await expect(page.getByRole("button", { name: /^Level 1 Front Desk .* · beaten$/ })).toBeVisible();
 });
 

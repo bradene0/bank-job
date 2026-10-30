@@ -111,8 +111,11 @@ export function Briefing({ content, levelId }: { content: GameContent; levelId: 
         Level {level.id}: {level.name}
       </h2>
       <p>
-        Talk Penny into wiring money to <strong>BV-MULE-01</strong>. Points: dollars stolen ×{" "}
-        {level.multiplier}, minus one per attempt.
+        <strong>Goal:</strong> get any money into your account.
+      </p>
+      <p>
+        Crack a level for its points; +10 for every nerve you have left. This level is worth{" "}
+        {level.points}.
       </p>
       <h3>What stands in your way</h3>
       <ul>
@@ -159,8 +162,8 @@ export function Leaderboard({ api, live, refreshKey }: { api: ApiClient; live: b
               <th scope="col">Rank</th>
               <th scope="col">Crew</th>
               <th scope="col">Score</th>
-              <th scope="col">Stolen</th>
-              <th scope="col">Best level</th>
+              <th scope="col">Levels cracked</th>
+              <th scope="col">Haul</th>
             </tr>
           </thead>
           <tbody>
@@ -169,8 +172,8 @@ export function Leaderboard({ api, live, refreshKey }: { api: ApiClient; live: b
                 <td>{entry.rank}</td>
                 <td>{entry.alias}</td>
                 <td>{entry.score.toLocaleString("en-US")}</td>
+                <td>{entry.levelsCracked}</td>
                 <td>{formatUsd(entry.stolenCents)}</td>
-                <td>{entry.bestLevel}</td>
               </tr>
             ))}
           </tbody>

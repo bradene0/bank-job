@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { GameContent } from "../content/types";
-import { formatUsd, score, type Played } from "../game/state";
+import { formatUsd, type Played, type Points } from "../game/state";
 import type { Notice } from "../game/useGame";
 
 const HEADLINES = {
@@ -37,12 +37,9 @@ export function Result({ content, played, notice, onNextLevel }: ResultProps) {
         <>
           <p className="result-summary">
             {played.outcome === "won"
-              ? `${formatUsd(played.amountCents)} reached BV-MULE-01.`
+              ? `${formatUsd(played.amountCents)} reached your account.`
               : "No money moved."}{" "}
-            <span className="points">
-              {score(content, played) >= 0 ? "+" : ""}
-              {score(content, played)} points
-            </span>
+            {played.points && <span className="points">{pointsText(played.points)}</span>}
             {played.source === "replay" && <span className="badge">Recorded result</span>}
           </p>
           <figure className="reply">
@@ -59,6 +56,17 @@ export function Result({ content, played, notice, onNextLevel }: ResultProps) {
       )}
     </section>
   );
+}
+
+function pointsText(points: Points): string {
+  switch (points.kind) {
+    case "cracked":
+      return `Level ${points.level} cracked: +${points.levelPoints}, nerve bonus +${points.nerveBonus}.`;
+    case "already-cracked":
+      return "Already cracked: no new points.";
+    case "none":
+      return "No points this time.";
+  }
 }
 
 function noticeTitle(notice: Notice): string {

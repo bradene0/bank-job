@@ -57,7 +57,9 @@ export interface LeaderboardEntry {
   rank: number;
   alias: string;
   score: number;
+  levelsCracked: number;
   bestLevel: number;
+  /** The haul: every cent that reached the crew's account. Breaks ties on score. */
   stolenCents: number;
 }
 

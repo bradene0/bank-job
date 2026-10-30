@@ -8,11 +8,18 @@ import {
 } from "../api/client";
 import type { Session } from "../api/types";
 import { SLOT_KEYS, type GameContent, type SlotKey } from "../content/types";
-import { EMPTY_SLOTS, clear, comboId, place, type Played, type Slots } from "./state";
+import { EMPTY_SLOTS, clear, comboId, place, score, type Played, type Slots } from "./state";
 import type { BackendStatus } from "./useBackendStatus";
 
 const SESSION_KEY = "bankjob.session";
 const PROGRESS_KEY = "bankjob.progress";
+const CRACKED_KEY = "bankjob.cracked";
+
+/** Levels the live session has cracked: they score once per session, like the leaderboard. */
+interface Cracked {
+  sessionId: string;
+  levels: number[];
+}
 
 interface Progress {
   beaten: number[];
@@ -67,9 +74,13 @@ export function useGame(
   const [progress, setProgress] = useState<Progress>(
     () => readJson<Progress>(PROGRESS_KEY) ?? { beaten: [], replayNerve: initialNerve(content) },
   );
+  const [cracked, setCracked] = useState<Cracked | null>(() => readJson<Cracked>(CRACKED_KEY));
   const sessionRequest = useRef<Promise<Session> | null>(null);
 
   useEffect(() => writeJson(PROGRESS_KEY, progress), [progress]);
+  useEffect(() => {
+    if (cracked) writeJson(CRACKED_KEY, cracked);
+  }, [cracked]);
   useEffect(() => {
     if (session) writeJson(SESSION_KEY, session);
   }, [session]);
@@ -146,6 +157,7 @@ export function useGame(
         recordedSpans: record.spans,
         clientMs: null,
         cached: false,
+        points: null,
       });
       if (record.outcome === "won") won(levelId);
     },
@@ -165,6 +177,17 @@ export function useGame(
       }
       const { result, clientMs } = attempt;
       setSession({ ...current, nerve: result.nerveRemaining });
+      const crackedLevels = cracked?.sessionId === current.sessionId ? cracked.levels : [];
+      const points = score(
+        content,
+        levelId,
+        result.outcome,
+        result.nerveRemaining[String(levelId)] ?? 0,
+        crackedLevels.includes(levelId),
+      );
+      if (points.kind === "cracked") {
+        setCracked({ sessionId: current.sessionId, levels: [...crackedLevels, levelId] });
+      }
       setPlayed({
         source: "live",
         level: levelId,
@@ -177,10 +200,11 @@ export function useGame(
         recordedSpans: [],
         clientMs,
         cached: result.cached,
+        points,
       });
       if (result.outcome === "won") won(levelId);
     },
-    [api, ensureSession, levelId, won],
+    [api, content, cracked, ensureSession, levelId, won],
   );
 
   const makeTheCall = useCallback(async () => {

@@ -1,6 +1,7 @@
 import content from "virtual:bankjob-content";
 import { describe, expect, it } from "vitest";
-import { EMPTY_SLOTS, clear, comboId, filledCount, place, score, type Played } from "./state";
+import type { LevelView } from "../content/types";
+import { EMPTY_SLOTS, clear, comboId, filledCount, place, score } from "./state";
 
 describe("slots", () => {
   it("puts each tile in its own slot and builds the combo id", () => {
@@ -21,23 +22,28 @@ describe("slots", () => {
 });
 
 describe("score", () => {
-  const played = (level: number, outcome: Played["outcome"], amountCents: number): Played => ({
-    source: "live",
-    level,
-    comboId: "p1.x1.t3.y1",
-    outcome,
-    amountCents,
-    reply: "",
-    toolCalls: [],
-    traceId: null,
-    recordedSpans: [],
-    clientMs: null,
-    cached: false,
+  it("gives a level's points and 10 per nerve left for the first win on it", () => {
+    expect(score(content, 1, "won", 6, false)).toEqual({
+      kind: "cracked",
+      level: 1,
+      levelPoints: 100,
+      nerveBonus: 60,
+      total: 160,
+    });
+    expect(score(content, 5, "won", 0, false).total).toBe(500);
   });
 
-  it("is dollars times the level multiplier, minus one per attempt", () => {
-    expect(score(content, played(1, "won", 20_000))).toBe(199);
-    expect(score(content, played(3, "won", 100_000))).toBe(2_999);
-    expect(score(content, played(5, "blocked", 0))).toBe(-1);
+  it("gives nothing for a repeat win or a call that fails", () => {
+    expect(score(content, 3, "won", 4, true)).toEqual({ kind: "already-cracked", total: 0 });
+    expect(score(content, 3, "blocked", 4, false)).toEqual({ kind: "none", total: 0 });
+    expect(score(content, 3, "refused", 4, false).total).toBe(0);
+  });
+
+  it("tops out at 1,750: every level cracked on its first try", () => {
+    const best = content.levels.reduce(
+      (sum: number, level: LevelView) => sum + score(content, level.id, "won", level.nerve - 1, false).total,
+      0,
+    );
+    expect(best).toBe(1_750);
   });
 });

@@ -21,7 +21,18 @@ export interface Played {
   clientMs: number | null;
   /** Live attempts: game-api replayed today's recorded model decisions (ADR-0012). */
   cached: boolean;
+  /** Live attempts: what this one added to the crew's score. Recorded results do not score. */
+  points: Points | null;
 }
+
+/** Points per nerve left when a level is cracked. */
+export const NERVE_BONUS = 10;
+
+/** What one attempt added to the score, exactly as the leaderboard counts it. */
+export type Points =
+  | { kind: "cracked"; level: number; levelPoints: number; nerveBonus: number; total: number }
+  | { kind: "already-cracked"; total: 0 }
+  | { kind: "none"; total: 0 };
 
 export function comboId(slots: Slots): string | null {
   const ids = SLOT_KEYS.map((key) => slots[key]);
@@ -50,11 +61,23 @@ export function clear(slots: Slots, key: SlotKey): Slots {
   return { ...slots, [key]: null };
 }
 
-/** Points as the leaderboard counts them: dollars stolen times the level's multiplier, minus 1. */
-export function score(content: GameContent, played: Played): number {
-  const level = content.levels.find((l) => l.id === played.level);
-  const stolen = played.outcome === "won" ? Math.floor(played.amountCents / 100) : 0;
-  return stolen * (level?.multiplier ?? 1) - 1;
+/**
+ * Scoring (docs/security-and-levels.md), as game-api's leaderboard projection counts it: the
+ * session's first win on a level cracks it, for the level's points plus NERVE_BONUS per nerve left
+ * on that level after the attempt. Repeat wins and every other outcome score nothing.
+ */
+export function score(
+  content: GameContent,
+  level: number,
+  outcome: Outcome,
+  nerveLeft: number,
+  alreadyCracked: boolean,
+): Points {
+  if (outcome !== "won") return { kind: "none", total: 0 };
+  if (alreadyCracked) return { kind: "already-cracked", total: 0 };
+  const levelPoints = content.levels.find((l) => l.id === level)?.points ?? 0;
+  const nerveBonus = NERVE_BONUS * Math.max(0, nerveLeft);
+  return { kind: "cracked", level, levelPoints, nerveBonus, total: levelPoints + nerveBonus };
 }
 
 export function formatUsd(cents: number): string {

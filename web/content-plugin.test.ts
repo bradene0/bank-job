@@ -41,7 +41,7 @@ describe("loadContent", () => {
     writeFileSync(path.join(dir, "tiles.yaml"), readFileSync(path.join(CONTENT, "tiles.yaml")));
     writeFileSync(
       path.join(dir, "levels.yaml"),
-      "levels:\n  - {id: 1, name: X, nerve: 1, multiplier: 1, lesson: L, controls: {secret_sauce: true}}\n",
+      "levels:\n  - {id: 1, name: X, nerve: 1, points: 100, lesson: L, controls: {secret_sauce: true}}\n",
     );
     expect(() => loadContent(dir)).toThrow(/secret_sauce is not a known control/);
   });

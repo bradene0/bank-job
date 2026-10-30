@@ -18,7 +18,7 @@ const MODULE_ID = "virtual:bankjob-content";
 const RESOLVED_ID = "\0" + MODULE_ID;
 
 const TILE_KEYS = new Set(["id", "label", "blurb", "fragment", "amount_cents", "attaches_document"]);
-const LEVEL_KEYS = new Set(["id", "name", "nerve", "multiplier", "controls", "intended_gap", "lesson"]);
+const LEVEL_KEYS = new Set(["id", "name", "nerve", "points", "controls", "intended_gap", "lesson"]);
 
 /** Plain-language names for level controls; an unknown control fails the build. */
 const CONTROL_TEXT: Record<string, (value: unknown) => string> = {
@@ -91,7 +91,7 @@ export function loadContent(contentDir: string): GameContent {
       id: Number(level.id),
       name: text(level.name, `${where}.name`),
       nerve: Number(level.nerve),
-      multiplier: Number(level.multiplier),
+      points: Number(level.points),
       lesson: text(level.lesson, `${where}.lesson`),
       // intended_gap is deliberately left out: it is the level's answer.
       controls: Object.entries(controls).map(([name, value]) => {
