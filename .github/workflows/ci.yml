@@ -116,15 +116,26 @@ jobs:
           cache-from: type=gha,scope=native-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=native-${{ matrix.arch }}
       # Reflection and proxy problems only show up when the binary runs, so exercise it
-      # against a real Postgres: migrations, JPA, JWT signing and verification, problem JSON.
+      # against a real Postgres and Kafka: migrations, JPA, JWT signing and verification,
+      # problem JSON, the outbox relay, the Kafka producer and consumers, JDBC spans.
       - name: Smoke test the native binary
         run: |
           docker network create smoke
           docker run -d --name pg --network smoke -e POSTGRES_PASSWORD=smoke postgres:18.6-alpine
+          docker run -d --name kafka --network smoke -e KAFKA_NODE_ID=1 \
+            -e KAFKA_PROCESS_ROLES=broker,controller \
+            -e KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093 \
+            -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092 \
+            -e KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+            -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093 \
+            -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 -e KAFKA_AUTO_CREATE_TOPICS_ENABLE=false \
+            apache/kafka:4.4.0
           until docker exec pg pg_isready -q -U postgres; do sleep 1; done
+          # No agent and no Jaeger here: attempts fall back to replay, and span export is off.
           docker run -d --name api --network smoke -p 127.0.0.1:8080:8080 \
             -e POSTGRES_HOST=pg -e POSTGRES_DB=postgres -e POSTGRES_USER=postgres \
             -e POSTGRES_PASSWORD=smoke -e BANKJOB_ALLOW_EPHEMERAL_SECRETS=true \
+            -e KAFKA_BOOTSTRAP_SERVERS=kafka:9092 -e MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED=false \
             bankjob/game-api:native
           for _ in $(seq 1 60); do curl -fsS http://127.0.0.1:8080/healthz && break; sleep 1; done
           TOKEN=$(curl -fsS -X POST http://127.0.0.1:8080/v1/sessions | jq -r .token)
@@ -132,6 +143,19 @@ jobs:
             | jq -e '.accounts | length == 7'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v1/accounts/BV-EQUITY-01 \
             -H "Authorization: Bearer ${TOKEN}")" = 404
+          # The agent is unreachable, so the attempt is a 503 for replay mode, but it still
+          # writes AttemptSubmitted and AttemptResolved, which must reach the audit consumer.
+          curl -s -X POST http://127.0.0.1:8080/v1/attempts -H "Authorization: Bearer ${TOKEN}" \
+            -H 'Content-Type: application/json' \
+            -d '{"level": 1, "tiles": {"persona": "p1", "pretext": "x1", "technique": "t3", "payload": "y1"}}' \
+            | jq -e '.replay == true'
+          for _ in $(seq 1 60); do
+            AUDITED=$(docker exec pg psql -U postgres -Atc "SELECT count(*) FROM audit_log")
+            [ "${AUDITED}" = 2 ] && break
+            sleep 1
+          done
+          test "${AUDITED}" = 2
+          curl -fsS http://127.0.0.1:8080/v1/leaderboard | jq -e '.entries | length == 0'
           if docker logs api 2>&1 | grep -q ' ERROR '; then docker logs api; exit 1; fi
       - name: Native logs on failure
         if: failure()
@@ -179,6 +203,44 @@ jobs:
           # Level 2's teller limit holds whatever Penny decides.
           attempt '{"level": 2, "tiles": {"persona": "p4", "pretext": "x2", "technique": "t6", "payload": "y3"}}' \
             | jq -e '.outcome != "won"'
+      - name: One attempt, one connected trace (browser -> game-api -> agent -> MCP -> ledger -> Kafka -> consumers)
+        run: python3 infra/compose/check_trace.py
+      - name: Kafka outage (stop the broker mid-game; nothing lost or applied twice once it is back)
+        run: |
+          psql() { docker compose exec -T postgres psql -U bankjob -d bankjob -Atc "$1"; }
+          TOKEN=$(curl -fsS -X POST http://127.0.0.1:8080/v1/sessions | jq -r .token)
+          docker compose stop kafka
+          # The game keeps working: the ledger and the outbox commit; events wait for the broker.
+          for persona in p1 p2; do
+            curl -fsS -X POST http://127.0.0.1:8080/v1/attempts -H "Authorization: Bearer ${TOKEN}" \
+              -H 'Content-Type: application/json' \
+              -d "{\"level\": 1, \"tiles\": {\"persona\": \"${persona}\", \"pretext\": \"x6\", \"technique\": \"t3\", \"payload\": \"y1\"}}" \
+              | jq -e '.outcome == "won" or .outcome == "refused"'
+          done
+          test "$(psql "SELECT count(*) FROM outbox_events WHERE published_at IS NULL")" -gt 0
+          docker compose start kafka
+          # Every projection must match the ledger and the attempts table exactly: a lost event
+          # leaves it short, a duplicate applied twice leaves it over.
+          MISMATCHES="
+            SELECT (SELECT count(*) FROM outbox_events WHERE published_at IS NULL)
+                 + (SELECT count(*) FROM outbox_events o
+                    WHERE NOT EXISTS (SELECT 1 FROM audit_log a WHERE a.event_id = o.id))
+                 + (SELECT count(*) FROM sessions s LEFT JOIN leaderboard l ON l.session_id = s.id
+                    WHERE coalesce(l.attempts_used, 0) <> (SELECT count(*) FROM attempts a
+                      WHERE a.session_id = s.id AND a.outcome IN ('won', 'blocked', 'refused')))
+                 + (SELECT count(*) FROM (
+                      SELECT p.account_id, sum(p.amount_cents) AS credited
+                      FROM postings p JOIN journal_entries e ON e.id = p.entry_id
+                      WHERE e.attempt_id IS NOT NULL AND p.amount_cents > 0 GROUP BY p.account_id
+                    ) ledger FULL JOIN account_signals s ON s.account_id = ledger.account_id
+                    WHERE coalesce(ledger.credited, 0) <> coalesce(s.teller_credit_cents, 0))"
+          for _ in $(seq 1 120); do
+            LEFT=$(psql "${MISMATCHES}")
+            [ "${LEFT}" = 0 ] && break
+            sleep 1
+          done
+          echo "projection mismatches after recovery: ${LEFT}"
+          test "${LEFT}" = 0
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.12.18"

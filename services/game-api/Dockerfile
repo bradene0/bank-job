@@ -28,6 +28,8 @@ RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q package -DskipTests \
 
 # ---------- Native build ----------
 FROM ${GRAALVM} AS build-native
+# Fewer builder threads use less memory (and take longer): --build-arg NATIVE_PARALLELISM=2
+ARG NATIVE_PARALLELISM=4
 RUN microdnf install -y unzip && microdnf clean all
 WORKDIR /src/services/game-api
 COPY services/game-api/.mvn/ .mvn/
@@ -35,7 +37,8 @@ COPY services/game-api/mvnw services/game-api/pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q -Pnative dependency:go-offline
 COPY content/ /src/content/
 COPY services/game-api/src/ src/
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -Pnative native:compile -DskipTests
+RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -Pnative native:compile -DskipTests \
+      -Dnative.parallelism=${NATIVE_PARALLELISM}
 
 # ---------- JVM runtime ----------
 FROM ${TEMURIN_JRE} AS jvm

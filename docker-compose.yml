@@ -46,7 +46,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      # Topics (and their DLQs) are declared explicitly in M3, never auto-created.
+      # Never auto-create: game-api's outbox relay creates the topics and their DLQs.
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       KAFKA_HEAP_OPTS: -Xms512m -Xmx512m
     volumes:
@@ -102,7 +102,10 @@ services:
       AGENT_URL: http://agent:8000
       DAILY_SEED_OVERRIDE: ${DAILY_SEED_OVERRIDE:-}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4317}
+      # OTLP over HTTP (both services); /v1/traces is appended by each SDK.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
+      # GET /v1/traces/{id} reads traces back from Jaeger's query API.
+      JAEGER_QUERY_URL: http://jaeger:16686
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
@@ -136,7 +139,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       # Penny's tools and briefs come from game-api's MCP server (internal network only).
       GAME_API_MCP_URL: http://game-api:8080/mcp
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4317}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:

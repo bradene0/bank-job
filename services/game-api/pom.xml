@@ -27,6 +27,8 @@
     <mcp.version>2.1.0</mcp.version>
     <!-- JDBC spans for traces; 2.3.x targets Spring Boot 4.1. -->
     <datasource-micrometer.version>2.3.0</datasource-micrometer.version>
+    <!-- Native builder threads; memory grows with it. Lower it on small machines. -->
+    <native.parallelism>4</native.parallelism>
   </properties>
 
   <dependencies>
@@ -204,9 +206,9 @@
         <artifactId>native-maven-plugin</artifactId>
         <configuration>
           <buildArgs>
-            <!-- Builder memory grows with thread count; 4 matches the CI runners. The
-                 build needs more than 4.5 GiB of heap, so allow Docker at least 8 GiB. -->
-            <buildArg>--parallelism=4</buildArg>
+            <!-- Builder memory grows with thread count; 4 matches the CI runners and needs
+                 about 6 GiB. Pass -Dnative.parallelism=2 where memory is tighter. -->
+            <buildArg>--parallelism=${native.parallelism}</buildArg>
           </buildArgs>
         </configuration>
       </plugin>
