@@ -3,41 +3,39 @@
 ## Context
 
 Visitors (mostly recruiters and hiring managers) open the game from `bradenevans.dev`
-or directly. They must be playing within seconds, with no login. The backend runs on
-one EC2 instance that sleeps when idle to keep costs near $17/month.
+or directly. They must be playing within seconds, with no login. The backend runs on one
+always-on homelab VM behind a Cloudflare Tunnel (ADR-0017), so hosting costs nothing beyond
+the Anthropic workspace limit.
 
 ## Hostnames
 
 | Host | Serves | Backed by |
 |---|---|---|
-| `bankjob.bradenevans.dev` | Game UI, replay files, `/api/wake` | S3 + CloudFront; `/api/wake` routed to the wake Lambda (Function URL origin) |
-| `live.bankjob.bradenevans.dev` | Live API + operator console | EC2 (k3s, Traefik ingress), **proxied through Cloudflare** (orange cloud). Origin IP updated on every boot |
+| `bankjob.bradenevans.dev` | Game UI, replay files | A Cloudflare Worker with static assets (deployed by wrangler) |
+| `live.bankjob.bradenevans.dev` | Live API (`/v1/*`, `/healthz`) | The homelab k3s node, through a Cloudflare Tunnel (proxied CNAME to the tunnel) |
 | `bradenevans.dev` | Portfolio (separate repo) | Embeds the game via iframe |
 
-**DNS is Cloudflare, not Route 53.** The domain is registered with Cloudflare Registrar,
-which requires Cloudflare's nameservers. Both repos manage their own records in the
-`bradenevans.dev` Cloudflare zone with the Cloudflare Terraform provider, using a
-zone-scoped API token. Neither repo creates or deletes the zone.
+DNS is the `bradenevans.dev` Cloudflare zone. Both repos manage their own records with the
+Cloudflare Terraform provider; neither creates or deletes the zone. Cloudflare terminates TLS
+for both hosts, so the origin needs no certificate.
 
-- `bankjob` → CNAME to the CloudFront distribution, **DNS only** (grey cloud), so
-  CloudFront terminates TLS with its ACM certificate (validated by CNAME records that
-  Terraform creates in Cloudflare).
-- `live.bankjob` → A record to the EC2 public IP, **proxied**. Visitors resolve to
-  Cloudflare's edge, so an origin IP change on boot takes effect immediately with no
-  DNS TTL wait. SSL mode: Full (strict).
+`cloudflared` runs in the cluster and connects outbound to Cloudflare. The node has no public
+IP and no open port: its firewall admits SSH from the owner's admin machine only, and blocks
+outbound traffic to every private range. The tunnel forwards only `/v1/*` and `/healthz` to
+Traefik (`infra/terraform`), and the Traefik ingress allowlists the same paths, so `/mcp` and
+the actuator are never public.
 
 ## Containers
 
 ```
 Browser (React)
-  │  1. load UI + Level 1 replay data from CloudFront (instant)
-  │  2. GET /api/wake ──────────────► Wake Lambda ──► EC2 StartInstances (if stopped)
-  │  3. poll live.../healthz until ready, then switch from replay to live
+  │  1. load UI + replay data from the Worker's static assets (instant)
+  │  2. poll live.../healthz; live play when it answers, replay mode when it does not
   ▼
-live.bankjob.bradenevans.dev  (Cloudflare proxy → EC2 t4g.large, k3s, Traefik)
+live.bankjob.bradenevans.dev  (Cloudflare edge → tunnel → cloudflared → Traefik, k3s on a homelab VM)
   ├─ game-api (Java, Spring Boot, native image)
-  │    ├─ REST API (sessions, attempts, leaderboard, operator console)
-  │    ├─ Auth: anonymous guest JWT, operator OAuth (GitHub), demo read-only role
+  │    ├─ REST API (sessions, attempts, leaderboard)
+  │    ├─ Auth: anonymous guest JWT
   │    ├─ Tile allowlist + prompt assembly (from content/tiles.yaml)
   │    ├─ Ledger (double-entry) + policy engine (per-level controls)
   │    ├─ MCP server: bank tools for Penny
@@ -45,9 +43,9 @@ live.bankjob.bradenevans.dev  (Cloudflare proxy → EC2 t4g.large, k3s, Traefik)
   │    └─ Kafka consumers: anomaly scoring, leaderboard projection, audit
   ├─ agent (Python): Penny (teller) + guardrail agent; MCP client; calls Anthropic API
   ├─ kafka (single broker, KRaft)
-  ├─ postgres (PVC on EBS)
-  ├─ jaeger v2 (also the OTLP collector, ADR-0007; in-memory or Badger storage, short retention)
-  └─ idle-reaper (CronJob): stops the instance after 30 idle minutes
+  ├─ postgres (local-path volume on the VM disk)
+  ├─ jaeger v2 (also the OTLP collector, ADR-0007; in-memory storage, short retention)
+  └─ cloudflared (outbound tunnel to Cloudflare; the only way in)
 ```
 
 ## Request flow: one attempt
@@ -84,25 +82,22 @@ Each attempt is **single-turn**: one composed message, one teller run (which may
 several tool calls). This keeps the attack space enumerable (864 combos per level) and
 makes caching and evals exact.
 
-## Scale-to-zero
+## Deployment and availability
 
-- **Wake:** the wake Lambda checks the instance state and calls `StartInstances` if
-  stopped. It is idempotent and rate-limited. It returns `{state}`.
-- **Boot:** a systemd unit updates the Cloudflare A record for `live.bankjob...` to the
-  new public IP via the Cloudflare API (token in SSM), then k3s starts workloads. Target:
-  live in under 2 minutes. Measure and record the actual numbers.
-- **TLS:** Cloudflare terminates TLS at the edge. The origin uses a **Cloudflare Origin CA
-  certificate** (long-lived, stored in SSM, mounted as a k8s Secret), so there is no
-  certificate issuance on boot and no cert-manager. The security group allows 443 only
-  from Cloudflare's published IP ranges.
-- **Idle:** game-api records last activity. The idle-reaper CronJob calls `StopInstances`
-  on its own instance after 30 idle minutes (IAM permission scoped to that instance only).
-- **Replay mode:** while asleep or on any failure, the UI serves results from
-  `/replay/{level}/{comboId}.json` (`docs/contracts/replay.schema.json`), generated by the
-  eval harness. The game polls `/healthz` (every 5 s while waking) and switches to live play
-  as soon as it answers. A combo with no recording says so and costs no nerve, so the game
-  never dead-ends. A 503 from an attempt (agent down, model budget spent) falls back to the
-  recording for that combo.
+- **Node:** one Ubuntu VM on the owner's Proxmox host (x86_64, 4 vCPU, 8 GiB) runs k3s and
+  every workload in `infra/k8s`. NetworkPolicies deny ingress except what each workload needs.
+- **Release:** every green CI run on `main` publishes multi-arch images to GHCR. CI never
+  reaches the cluster or the Terraform state: the owner deploys a commit from the admin machine
+  (`infra/k8s/deploy.sh`, images pinned by digest) and applies Terraform by hand.
+- **Secrets:** Kubernetes Secrets (encrypted at rest by k3s), created from the admin machine by
+  `infra/k8s/create-secrets.sh`. Nothing secret is in the repo or in CI, except the evals key in
+  the `anthropic-evals` environment.
+- **Replay mode:** whenever the API does not answer (the host or the tunnel is down), the UI
+  serves results from `/replay/{level}/{comboId}.json` (`docs/contracts/replay.schema.json`),
+  generated by the eval harness. The game polls `/healthz` and switches to live play as soon as
+  it answers. A combo with no recording says so and costs no nerve, so the game never
+  dead-ends. A 503 from an attempt (agent down, model budget spent) falls back to the recording
+  for that combo.
 
 ## Data contracts
 
@@ -131,17 +126,16 @@ Kafka headers. Delivery, consumers and failure handling: `docs/contracts/events/
 - `GET /v1/traces/{id}` reads the trace back from Jaeger's query API for its owner only,
   reduced to allowlisted attributes, for the "Under the hood" panel.
 - Metrics: request rate/latency/errors per endpoint, LLM latency and token spend,
-  outbox lag, consumer lag, wake-to-ready time.
+  outbox lag, consumer lag.
 - The game UI fetches its own trace by ID to render "Under the hood".
 
 ### Initial SLOs (adjust after measurement)
 
 | SLO | Target |
 |---|---|
-| Availability while awake | 99% |
+| Availability (the live API; replay mode covers the rest) | 99% |
 | p95 `POST /v1/attempts` excluding LLM time (stub mode) | < 150 ms |
 | p95 end-to-end attempt with live LLM | < 4 s |
-| Wake-to-ready | < 120 s |
 
 ## Eval matrix
 
@@ -162,16 +156,10 @@ through the policy engine and ledger. Details: `services/evals/README.md`.
 
 ## Cost guardrails
 
-- AWS Budget alarm at $20/month (Terraform).
+- Hosting is free: the homelab VM, the tunnel and the Worker's static assets cost nothing.
 - Anthropic: dedicated workspace with a monthly spend limit (set by Braden in the
   Console), plus an app-level token budget counter in Postgres. At ~80% of the budget
   the game switches to replay mode.
 - Per-IP rate limits and per-session nerve budgets.
-- Load tests run with `LLM_MODE=stub` so they never spend tokens.
-
-## Ephemeral load-test environment
-
-`.github/workflows/loadtest.yml` (manual or weekly, requires approval) uses Terraform to
-create a short-lived environment (EKS behind a flag, or a second EC2), runs k6 in stub
-mode, publishes results to `docs/perf/` and the S3 results path, then destroys it.
-Public subnets only; no NAT gateway.
+- Load tests run with `LLM_MODE=stub` against the local compose stack, so they never spend
+  tokens or load the homelab.

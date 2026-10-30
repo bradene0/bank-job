@@ -8,7 +8,7 @@ the game-api policy engine is.
 
 | Actor | Auth | Can do |
 |---|---|---|
-| Player (anonymous) | Guest JWT from `POST /v1/sessions` (short-lived, ES256, signing key in SSM) | Submit attempts, read own results and traces |
+| Player (anonymous) | Guest JWT from `POST /v1/sessions` (short-lived, ES256, signing key in a k8s Secret) | Submit attempts, read own results and traces |
 | Penny (teller agent) | Attempt token per attempt (ES256, audience `bankjob-mcp`, 2 min, subject = attempt id; ADR-0011) | Read her brief and call MCP bank tools for that one attempt; every call re-checked by the policy engine against the attempt's level |
 | Guardrail agent | The same attempt token, plus a review id | Read one pending review and return a verdict (Level 5 only); the verdict is one input to the policy engine |
 | Operator (Braden) | GitHub OAuth login | Operator console, full read, config |
