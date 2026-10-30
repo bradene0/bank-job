@@ -1,6 +1,6 @@
 # ADR-0001: Scale-to-zero k3s on one EC2 instead of always-on EKS
 
-**Status:** Accepted (2026-10-29)
+**Status:** Superseded by ADR-0017 (2026-10-30)
 
 ## Context
 The demo gets low, bursty traffic (recruiters). An always-on EKS cluster costs about $73/month
