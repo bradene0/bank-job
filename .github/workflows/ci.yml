@@ -116,7 +116,8 @@ jobs:
             | docker run --rm -i ghcr.io/yannh/kubeconform:v0.8.0 -strict -summary \
                 -skip HelmChartConfig -kubernetes-version 1.36.0 -
       - name: shellcheck
-        run: docker run --rm -v "$PWD:/m" -w /m/infra/k8s koalaman/shellcheck:v0.11.0 -x ./*.sh
+        working-directory: infra/k8s
+        run: docker run --rm -v "$PWD:/m" -w /m koalaman/shellcheck:v0.11.0 -x ./*.sh
 
   native:
     # Proves ADR-0004 holds on every change: the game-api still compiles to a native
