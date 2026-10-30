@@ -20,7 +20,7 @@ Option 3.
 
 - One Ubuntu 24.04 VM on the owner's Proxmox host (x86_64, 4 vCPU with the host CPU type for
   AVX2, 8 GiB, 60 GiB) runs k3s and every in-cluster workload.
-- `cloudflared` runs in the cluster and connects outbound to Cloudflare. `live.bankjob` is a
+- `cloudflared` runs in the cluster and connects outbound to Cloudflare. `bankjob-live` is a
   proxied CNAME to the tunnel. The tunnel forwards only `/v1/*` and `/healthz` to Traefik, and
   the Traefik ingress allowlists the same paths. `/mcp` is never public.
 - The VM has its own firewall: inbound SSH from the owner's admin machine only; outbound DNS to

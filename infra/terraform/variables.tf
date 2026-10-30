@@ -20,7 +20,7 @@ variable "zone_name" {
 variable "live_subdomain" {
   description = "Subdomain of zone_name that serves the live API through the tunnel."
   type        = string
-  default     = "live.bankjob"
+  default     = "bankjob-live"
 }
 
 variable "ingress_service" {

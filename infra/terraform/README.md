@@ -1,7 +1,7 @@
 # infra/terraform
 
 The Cloudflare side of production (ADR-0017): the `bankjob` tunnel, its routes, and the proxied
-`live.bankjob` record in the existing `bradenevans.dev` zone. Terraform never creates or deletes
+`bankjob-live` record in the existing `bradenevans.dev` zone. Terraform never creates or deletes
 the zone. The game UI Worker is deployed by wrangler, not here.
 
 - State is local to the owner's machine. It is never committed, never read by CI, and may hold

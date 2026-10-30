@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: live.bankjob.bradenevans.dev
+    - host: bankjob-live.bradenevans.dev
       http:
         paths:
           - path: /v1/

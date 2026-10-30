@@ -21,4 +21,4 @@ for workload in statefulset/postgres statefulset/kafka deployment/jaeger \
   deployment/agent deployment/game-api deployment/cloudflared; do
   kc -n bankjob rollout status "$workload" --timeout=5m
 done
-echo "Deployed ${sha:0:12}. Check: curl -fsS https://live.bankjob.bradenevans.dev/healthz"
+echo "Deployed ${sha:0:12}. Check: curl -fsS https://bankjob-live.bradenevans.dev/healthz"

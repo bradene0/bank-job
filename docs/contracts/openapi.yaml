@@ -7,7 +7,7 @@ info:
     compose stack. Operations tagged `planned` are designed but not implemented yet, and
     are excluded from the contract run until they ship.
 servers:
-  - url: https://live.bankjob.bradenevans.dev
+  - url: https://bankjob-live.bradenevans.dev
 tags:
   - name: health
   - name: sessions

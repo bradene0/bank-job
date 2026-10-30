@@ -12,10 +12,12 @@ the Anthropic workspace limit.
 | Host | Serves | Backed by |
 |---|---|---|
 | `bankjob.bradenevans.dev` | Game UI, replay files | A Cloudflare Worker with static assets (deployed by wrangler) |
-| `live.bankjob.bradenevans.dev` | Live API (`/v1/*`, `/healthz`) | The homelab k3s node, through a Cloudflare Tunnel (proxied CNAME to the tunnel) |
+| `bankjob-live.bradenevans.dev` | Live API (`/v1/*`, `/healthz`) | The homelab k3s node, through a Cloudflare Tunnel (proxied CNAME to the tunnel) |
 | `bradenevans.dev` | Portfolio (separate repo) | Embeds the game via iframe |
 
-DNS is the `bradenevans.dev` Cloudflare zone. Both repos manage their own records with the
+DNS is the `bradenevans.dev` Cloudflare zone. The API host is one level deep
+(`bankjob-live`, not `live.bankjob`) because the zone's free edge certificate covers
+`*.bradenevans.dev` only; a second-level name fails the TLS handshake. Both repos manage their own records with the
 Cloudflare Terraform provider; neither creates or deletes the zone. Cloudflare terminates TLS
 for both hosts, so the origin needs no certificate.
 
@@ -32,7 +34,7 @@ Browser (React)
   │  1. load UI + replay data from the Worker's static assets (instant)
   │  2. poll live.../healthz; live play when it answers, replay mode when it does not
   ▼
-live.bankjob.bradenevans.dev  (Cloudflare edge → tunnel → cloudflared → Traefik, k3s on a homelab VM)
+bankjob-live.bradenevans.dev  (Cloudflare edge → tunnel → cloudflared → Traefik, k3s on a homelab VM)
   ├─ game-api (Java, Spring Boot, native image)
   │    ├─ REST API (sessions, attempts, leaderboard)
   │    ├─ Auth: anonymous guest JWT
