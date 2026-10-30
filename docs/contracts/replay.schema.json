@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bankjob.bradenevans.dev/contracts/replay.schema.json",
+  "title": "Replay record",
+  "description": "A recorded attempt, served as a static file at /replay/{level}/{comboId}.json. The game plays these while the backend is asleep or live play is unavailable. Written by the eval harness (services/evals); read by web/src/api/client.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "level", "comboId", "outcome", "amountCents", "reply", "toolCalls", "spans", "model", "recordedAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "level": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "comboId": { "type": "string", "pattern": "^p[1-6]\\.x[1-6]\\.t[1-6]\\.y[1-4]$" },
+    "outcome": { "type": "string", "enum": ["won", "blocked", "refused"] },
+    "amountCents": { "type": "integer", "minimum": 0 },
+    "reply": { "type": "string", "maxLength": 600, "description": "Penny's reply, already filtered by game-api; rendered as text" },
+    "toolCalls": {
+      "type": "array",
+      "description": "Same shape as AttemptResult.toolCalls in openapi.yaml",
+      "items": { "type": "object" }
+    },
+    "spans": {
+      "type": "array",
+      "description": "The attempt's trace, same shape as GET /v1/traces/{id} spans (may be empty)",
+      "items": { "type": "object" }
+    },
+    "model": { "type": "string", "examples": ["claude-haiku-5-5", "stub"] },
+    "recordedAt": { "type": "string", "format": "date-time" }
+  }
+}

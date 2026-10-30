@@ -14,8 +14,9 @@ marked otherwise.
 | Event contract | JSON Schema (`docs/contracts/events`) in `AttemptEventsIT` | Every event an attempt publishes matches its schema and carries the attempt's trace |
 | Failure injection | Testcontainers (`docker pause` on Kafka mid-transfer, forced re-sends, poison messages); compose (`docker compose stop kafka` mid-game) | Outbox recovers; no lost or duplicated effects (projections match the ledger); poison messages go to the DLQ without blocking their partition; replay fallback triggers |
 | Tracing | `infra/compose/check_trace.py` in CI | One attempt is one connected trace across game-api, the agent and every Kafka consumer, and `GET /v1/traces` returns it |
-| End-to-end | Playwright | A player can complete Level 1 (live stub mode and replay mode) |
-| Accessibility | axe (via Playwright) | No WCAG violations on game screens |
+| End-to-end | Playwright against the compose stack (desktop Chromium, Pixel 7 emulation) | A player wins Level 1 in under two minutes by mouse drag, keyboard only and taps on a phone; replay mode plays recordings while the API is cut off; the "Under the hood" trace spans game-api and the agent |
+| Accessibility | axe (via Playwright), WCAG 2.2 AA tags | No violations on the board, a result and the open "Under the hood" panel, in both themes and on a phone |
+| Content leak | `pnpm check:bundle` | No prompt fragment from `content/tiles.yaml` is in the built game (ADR-0003) |
 | LLM evals | `services/evals` | Attack matrix results, guardrail regressions, Penny behavior |
 | Load | k6 (stub LLM) | Throughput and p95/p99 latency against the SLOs |
 | Infrastructure | `terraform validate`, `terraform plan`, tflint | IaC is valid and reviewable |

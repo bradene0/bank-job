@@ -28,7 +28,7 @@ docker compose down -v        # stop and delete local data
 
 | Service | URL |
 |---|---|
-| Game UI | http://localhost:5173 |
+| Game UI | http://localhost:5173 (drag tiles, or tap them; plays recorded results if the API is down) |
 | game-api | http://localhost:8080/healthz, `POST /v1/sessions`, `POST /v1/attempts`, `GET /v1/accounts`, `GET /v1/traces/{id}`, `GET /v1/leaderboard` (see [OpenAPI](docs/contracts/openapi.yaml)) |
 | agent | http://localhost:8000/healthz |
 | Jaeger UI | http://localhost:16686 |
