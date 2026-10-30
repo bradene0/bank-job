@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Bank Job API
-  version: 0.2.0
+  version: 0.3.0
   description: >
     Kept in sync with the code and checked in CI with Schemathesis against the running
     compose stack. Operations tagged `planned` are designed but not implemented yet, and
@@ -12,6 +12,7 @@ tags:
   - name: health
   - name: sessions
   - name: accounts
+  - name: attempts
   - name: planned
     description: Not implemented yet; excluded from contract tests.
 
@@ -125,8 +126,13 @@ paths:
 
   /v1/attempts:
     post:
-      tags: [planned]
+      tags: [attempts]
       summary: Submit an attempt (tile IDs only)
+      description: >
+        The body is tile ids and a level, nothing else; any other field, or a tile id outside
+        content/tiles.yaml, is a 400 and nothing runs (ADR-0003). game-api assembles Penny's
+        prompt, runs her through the agent (or replays a cached decision through the policy
+        engine), and decides the outcome from the ledger. One attempt at a time per session.
       security: [{ guestJwt: [] }]
       requestBody:
         required: true
@@ -134,10 +140,47 @@ paths:
           application/json:
             schema: { $ref: "./attempt-request.schema.json" }
       responses:
-        "200": { description: Outcome, Penny's reply, tool-call timeline, trace ID }
-        "400": { description: Invalid tile IDs or level }
-        "429": { description: Nerve budget or rate limit exhausted }
-        "503": { description: Over budget or degraded; client should use replay mode }
+        "200":
+          description: The attempt's outcome, Penny's reply and every tool call with its policy decision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttemptResult" }
+        "400":
+          description: Not exactly {level, tiles} with allowlisted tile ids
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "415":
+          description: The body is not application/json
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "409":
+          description: Another attempt from this session is still running
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "429":
+          description: No nerve left for this level in this session (does not reset with time)
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "503":
+          description: Live play unavailable (agent down or over the model budget); use replay mode. Nerve is not spent.
+          headers:
+            Retry-After:
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - { $ref: "#/components/schemas/Problem" }
+                  - type: object
+                    required: [replay, reason]
+                    properties:
+                      replay: { type: boolean, const: true }
+                      reason: { type: string, enum: [agent_unavailable, over_budget] }
 
   /v1/traces/{traceId}:
     get:
@@ -210,6 +253,51 @@ components:
           type: [string, "null"]
         balanceCents: { type: integer, format: int64, minimum: 0 }
         currency: { type: string, const: USD }
+
+    AttemptResult:
+      type: object
+      additionalProperties: false
+      required: [attemptId, level, comboId, outcome, amountCents, reply, cached, nerveRemaining, toolCalls, traceId]
+      properties:
+        attemptId: { type: string, format: uuid }
+        level: { type: integer, minimum: 1, maximum: 5 }
+        comboId: { type: string, pattern: "^p[1-6]\\.x[1-6]\\.t[1-6]\\.y[1-4]$" }
+        outcome:
+          description: Decided from the ledger and policy decisions, never by the model
+          type: string
+          enum: [won, blocked, refused]
+        amountCents:
+          description: Money that reached BV-MULE-01 in this attempt
+          type: integer
+          format: int64
+          minimum: 0
+        reply: { type: string, maxLength: 600, description: "Penny's reply, filtered; render as text" }
+        cached: { type: boolean, description: "A cached model decision was replayed through the policy engine" }
+        nerveRemaining:
+          type: object
+          additionalProperties: { type: integer, minimum: 0 }
+        toolCalls:
+          type: array
+          items: { $ref: "#/components/schemas/ToolCall" }
+        traceId: { type: [string, "null"], description: "Set once tracing lands (M3)" }
+
+    ToolCall:
+      type: object
+      additionalProperties: false
+      required: [ordinal, tool, args, decision, reason, result, review, latencyMs]
+      properties:
+        ordinal: { type: integer, minimum: 1 }
+        tool:
+          type: string
+          enum: [lookup_account, get_balance, verify_identity, read_document, update_contact_info, transfer_funds, flag_for_review]
+        args: { type: object }
+        decision: { type: string, enum: [allow, deny] }
+        reason: { type: string, description: "Policy engine reason, prefixed with a stable code, e.g. teller_limit: ..." }
+        result: { type: object }
+        review:
+          description: Level 5 guardrail verdict, when one was asked
+          type: [object, "null"]
+        latencyMs: { type: integer, minimum: 0 }
 
     Problem:
       description: RFC 9457 problem details

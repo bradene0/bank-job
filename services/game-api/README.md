@@ -19,11 +19,25 @@ JWT_SIGNING_KEY_PATH=$PWD/dev-keys/jwt-es256.pem IP_HASH_SALT=dev \
   POSTGRES_PASSWORD=change-me-local-only ./mvnw spring-boot:run
 ```
 
-Modules (packages): `ledger` (double-entry core; depends on nothing else), `branch`
-(per-session seed data), `session` + `security` (guest sessions, ES256 JWTs), `accounts`
-(read API), `content` (levels and tiles from `content/`), `maintenance` (partitions).
-Boundaries are checked by `ArchitectureTest`.
+Modules (packages):
+
+| Package | Role |
+|---|---|
+| `ledger` | Double-entry core; depends on nothing else |
+| `branch` | Per-session seed data and the account directory the tools read |
+| `session`, `security` | Guest sessions, nerve, ES256 guest and attempt tokens |
+| `content` | Levels, tiles, daily rotation and prompts from `content/` |
+| `attempt` | Attempt and tool-call storage, server-side prompt assembly |
+| `policy` | The policy engine: per-level authorization of every tool call |
+| `tools` | Bank tool execution: parse, authorize, act, record |
+| `mcp` | MCP server for the agent (stateless streamable HTTP at `/mcp`) |
+| `play` | `POST /v1/attempts`: nerve, cache, agent call, outcome, budget |
+| `accounts`, `maintenance` | Read API; attempt partitions |
+
+Boundaries are checked by `ArchitectureTest`. For example, the policy engine cannot see
+transport or the agent, and only the tools and branch provisioning can move money.
 
 Endpoints: `GET /healthz` (readiness, includes Postgres), `POST /v1/sessions`,
-`GET /v1/accounts`, `GET /v1/accounts/{number}`, `GET /v1/hello`. Contract:
-`docs/contracts/openapi.yaml`.
+`POST /v1/attempts`, `GET /v1/accounts`, `GET /v1/accounts/{number}`, `GET /v1/hello`.
+Contract: `docs/contracts/openapi.yaml`. Internal: `POST /mcp` (attempt tokens only;
+`docs/contracts/agent-mcp.md`).

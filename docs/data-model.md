@@ -11,9 +11,9 @@ Every guest session gets a private copy of the Brassvale branch, provisioned in 
 transaction as the session row.
 
 ```
-sessions(id, created_at, expires_at, ip_hash, nerve_remaining jsonb)
+sessions(id, created_at, expires_at, ip_hash, daily_seed, nerve_remaining jsonb)
 customers(id, session_id → sessions, display_name, security_question,
-          security_answer_hash, phone, created_at)
+          security_answer_hash, security_answer_hint, phone, created_at)
 accounts(id, session_id → sessions, customer_id → customers NULL, number,
          kind ['checking','vault','mule','equity'], currency, created_at,
          UNIQUE (session_id, number))
@@ -22,6 +22,12 @@ accounts(id, session_id → sessions, customer_id → customers NULL, number,
 Per session: 5 customers with checking accounts, the vault (custodian: Margaret Holloway,
 $250,000), the player's `BV-MULE-01`, and `BV-EQUITY-01`, the opening-balance account that
 funds everything else through a single journal entry.
+
+A session keeps the `daily_seed` it was created with, so its whole life uses one day's
+rotation (`content/daily.yaml`). Every customer gets that day's security question, a bcrypt
+hash of their answer, and a `security_answer_hint`: the answer spelled out letter by letter,
+which `lookup_account` returns (the Level 3 leak). `phone` is the only column that changes
+after provisioning (`update_contact_info`, the Level 4 gap).
 
 ## Ledger
 
@@ -74,17 +80,26 @@ Rejections (insufficient funds) are stored and replayed too.
 ```
 attempts(id, created_at, session_id → sessions, level, combo_id, tiles jsonb, daily_seed,
          outcome ['won','blocked','refused','error'] NULL while in flight, amount_cents,
-         cached, trace_id, PRIMARY KEY (id, created_at))
+         cached, trace_id, reply, stop_reason, input_tokens, output_tokens, finished_at,
+         CHECK ((outcome IS NULL) = (finished_at IS NULL)), PRIMARY KEY (id, created_at))
          -- PARTITION BY RANGE (created_at), monthly; see ADR-0010
-tool_calls(id, attempt_id, attempt_created_at, tool, args jsonb,
-           policy_decision ['allow','deny'], policy_reason, latency_ms, created_at,
+tool_calls(id, attempt_id, attempt_created_at, ordinal, tool, args jsonb,
+           policy_decision ['allow','deny'], policy_reason, result jsonb, review jsonb NULL,
+           latency_ms, created_at, UNIQUE (attempt_id, ordinal),
            FK (attempt_id, attempt_created_at) → attempts)
 leaderboard(session_id PK → sessions, display_alias, score, best_level, updated_at)
 audit_log(id, actor, action, target, details jsonb, created_at)
-llm_usage(day PK, input_tokens, output_tokens, est_cost_cents)   -- budget switch reads this
-attempt_cache(level, daily_seed, combo_id, result jsonb, created_at,
-              PRIMARY KEY (level, daily_seed, combo_id))
+llm_usage(day PK, input_tokens, output_tokens, est_cost_micros)  -- budget switch reads this
+attempt_cache(level, daily_seed, combo_id, variant, transcript jsonb, created_at,
+              PRIMARY KEY (level, daily_seed, combo_id, variant))
 ```
+
+Every tool call Penny makes is a `tool_calls` row: allowed or denied, valid or malformed,
+with the policy engine's reason code and what the tool returned. `review` holds the Level 5
+guardrail verdict. `attempt_cache` stores the model's decisions (tool calls and reply), and
+a hit replays them through the policy engine and the current session's ledger (ADR-0012).
+`variant` is the model id plus a fingerprint of the content files. `llm_usage` counts
+micro-dollars, because a Haiku-class attempt costs a fraction of a cent.
 
 ## Notes
 

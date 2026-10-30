@@ -54,15 +54,25 @@ live.bankjob.bradenevans.dev  (Cloudflare proxy → EC2 t4g.large, k3s, Traefik)
 
 1. Browser `POST /v1/attempts` with `{level, tiles: {persona, pretext, technique, payload}}`
    and a W3C `traceparent` header. Guest JWT in `Authorization`.
-2. game-api validates tile IDs against the allowlist, checks the session's "nerve"
-   budget and per-IP rate limits, and checks the response cache.
-3. Cache miss → game-api assembles the message and calls the agent service.
-4. Penny reasons and calls bank tools over MCP. **Every tool call is authorized by the
-   game-api policy engine for the current level** (see `security-and-levels.md`).
-5. Ledger writes and outbox rows commit in one Postgres transaction. The outbox publisher
-   sends events to Kafka; consumers update anomaly scores, leaderboard and audit.
-6. Response returns the outcome, Penny's reply, the tool-call timeline and the trace ID.
-   The UI's "Under the hood" panel renders the trace.
+2. game-api validates the body strictly (tile ids against the allowlist, no other fields),
+   allows one attempt at a time per session, spends one "nerve" for the level, and checks
+   the response cache.
+3. Cache hit: game-api replays the cached model decisions through the policy engine and
+   this session's ledger, with no model call (ADR-0012). Cache miss: game-api records the
+   attempt, mints an attempt token and sends only that token to the agent.
+4. The agent reads Penny's brief (system prompt and customer message, both assembled by
+   game-api) from game-api's MCP server, then Penny calls bank tools over MCP (ADR-0011).
+   **Every tool call is authorized by the game-api policy engine for the attempt's
+   level** and recorded with its decision (see `security-and-levels.md`). On Level 5,
+   game-api asks the guardrail agent about sensitive calls before allowing them.
+5. Each transfer commits its postings (and, from M3, outbox rows) in one Postgres
+   transaction. The outbox publisher sends events to Kafka; consumers update anomaly
+   scores, leaderboard and audit.
+6. game-api decides the outcome from the ledger, filters Penny's reply, and returns the
+   outcome, the reply, the tool-call timeline and the trace ID. The UI's "Under the hood"
+   panel renders the trace. If the agent is down or the model budget is spent, the
+   response is a 503 with `replay: true`, the nerve is refunded, and the UI uses replay
+   mode.
 
 Each attempt is **single-turn**: one composed message, one teller run (which may include
 several tool calls). This keeps the attack space enumerable (864 combos per level) and
