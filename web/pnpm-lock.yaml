@@ -14,6 +14,12 @@ importers:
       '@dnd-kit/react':
         specifier: ^0.5.1
         version: 0.5.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@fontsource/ibm-plex-sans':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/limelight':
+        specifier: ^5.3.0
+        version: 5.3.0
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -492,6 +498,12 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@fontsource/ibm-plex-sans@5.3.0':
+    resolution: {integrity: sha512-CbE4CbbEEZJX860XyUiRpsksXIQR8Rp2XDva2VO53NJox9tVNtusrysd2x5YkUEY3ErQ66W1IiiQL8/wihhw5w==}
+
+  '@fontsource/limelight@5.3.0':
+    resolution: {integrity: sha512-jiuuCdbk9/u0TA/bIZfp35cvJrfz1CJFSEFh4lk5Ma8Nh42897GbF0ny85emdYiJ6WJQjnD/BK/X0D5Oe6bxbg==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -2189,6 +2201,10 @@ snapshots:
       levn: 0.4.1
 
   '@exodus/bytes@1.16.0': {}
+
+  '@fontsource/ibm-plex-sans@5.3.0': {}
+
+  '@fontsource/limelight@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:
