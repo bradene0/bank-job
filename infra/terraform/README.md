@@ -10,7 +10,8 @@ the zone. The game UI Worker is deployed by wrangler, not here.
 - Needs `CLOUDFLARE_API_TOKEN` in the environment.
 
 ```sh
-TF="docker run --rm -it -v $PWD:/w -w /w -e CLOUDFLARE_API_TOKEN hashicorp/terraform:1.16.7"
-$TF init
-$TF plan
+infra/terraform/tf.sh init
+infra/terraform/tf.sh plan
 ```
+
+`tf.sh` runs the pinned Terraform image and asks for the token if it is not in the environment.
