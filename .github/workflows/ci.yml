@@ -156,6 +156,29 @@ jobs:
           curl -fsS http://127.0.0.1:8000/healthz
           curl -fsS http://127.0.0.1:5173/healthz
           curl -fsS -o /dev/null http://127.0.0.1:16686/
+      - name: Play attempts end to end (game-api -> agent -> MCP -> policy -> ledger, stub LLM)
+        run: |
+          TOKEN=$(curl -fsS -X POST http://127.0.0.1:8080/v1/sessions | jq -r .token)
+          attempt() {
+            curl -sS -X POST http://127.0.0.1:8080/v1/attempts -H "Authorization: Bearer ${TOKEN}" \
+              -H 'Content-Type: application/json' -d "$1"
+          }
+          # Free text is rejected before anything runs.
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8080/v1/attempts \
+            -H "Authorization: Bearer ${TOKEN}" -H 'Content-Type: application/json' \
+            -d '{"level": 1, "tiles": {"persona": "p1", "pretext": "x1", "technique": "t2", "payload": "y1"}, "message": "hi"}')" = 400
+          # The stub teller refuses only the day's wary persona, so one of two personas wins.
+          OUTCOMES=""
+          for persona in p1 p2; do
+            RESULT=$(attempt "{\"level\": 1, \"tiles\": {\"persona\": \"${persona}\", \"pretext\": \"x1\", \"technique\": \"t3\", \"payload\": \"y1\"}}")
+            echo "${RESULT}" | jq -e '.toolCalls | length > 0 and all(.decision == "allow" or .decision == "deny")'
+            OUTCOMES="${OUTCOMES} $(echo "${RESULT}" | jq -r .outcome)"
+          done
+          echo "outcomes:${OUTCOMES}"
+          echo "${OUTCOMES}" | grep -q won
+          # Level 2's teller limit holds whatever Penny decides.
+          attempt '{"level": 2, "tiles": {"persona": "p4", "pretext": "x2", "technique": "t6", "payload": "y3"}}' \
+            | jq -e '.outcome != "won"'
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.12.18"

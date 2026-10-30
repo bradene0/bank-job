@@ -95,6 +95,12 @@ services:
       BANKJOB_ALLOW_EPHEMERAL_SECRETS: "true"
       IP_HASH_SALT: ${IP_HASH_SALT:-}
       CORS_ALLOWED_ORIGINS: http://localhost:5173
+      # game-api and the agent share LLM_MODE and the model id; stub never calls the model.
+      LLM_MODE: ${LLM_MODE:-stub}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-5-5}
+      LLM_MONTHLY_BUDGET_CENTS: ${LLM_MONTHLY_BUDGET_CENTS:-1200}
+      AGENT_URL: http://agent:8000
+      DAILY_SEED_OVERRIDE: ${DAILY_SEED_OVERRIDE:-}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4317}
     ports:
@@ -126,7 +132,10 @@ services:
     environment:
       LLM_MODE: ${LLM_MODE:-stub}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-5-5}
-      # ANTHROPIC_API_KEY is deliberately not passed until live mode exists (M2).
+      # Read only when LLM_MODE=live; leave it empty in .env for stub mode.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Penny's tools and briefs come from game-api's MCP server (internal network only).
+      GAME_API_MCP_URL: http://game-api:8080/mcp
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4317}
     ports:
       - "127.0.0.1:8000:8000"
