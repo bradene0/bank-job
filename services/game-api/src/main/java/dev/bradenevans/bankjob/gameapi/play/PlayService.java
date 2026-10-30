@@ -5,7 +5,9 @@ import dev.bradenevans.bankjob.gameapi.attempt.AttemptStore;
 import dev.bradenevans.bankjob.gameapi.attempt.Outcome;
 import dev.bradenevans.bankjob.gameapi.attempt.ToolCallRecord;
 import dev.bradenevans.bankjob.gameapi.branch.BranchDirectory;
+import dev.bradenevans.bankjob.gameapi.branch.BranchProvisioner;
 import dev.bradenevans.bankjob.gameapi.content.Combo;
+import dev.bradenevans.bankjob.gameapi.content.GameContent;
 import dev.bradenevans.bankjob.gameapi.ledger.LedgerQueries;
 import dev.bradenevans.bankjob.gameapi.policy.GuardrailReviewer;
 import dev.bradenevans.bankjob.gameapi.policy.GuardrailVerdict;
@@ -56,6 +58,8 @@ class PlayService {
   private final AgentClient agent;
   private final BankTools tools;
   private final BranchDirectory directory;
+  private final BranchProvisioner branches;
+  private final GameContent content;
   private final LedgerQueries ledger;
   private final ReplyFilter replyFilter;
   private final JsonMapper json;
@@ -73,6 +77,8 @@ class PlayService {
       AgentClient agent,
       BankTools tools,
       BranchDirectory directory,
+      BranchProvisioner branches,
+      GameContent content,
       LedgerQueries ledger,
       ReplyFilter replyFilter,
       JsonMapper json,
@@ -86,6 +92,8 @@ class PlayService {
     this.agent = agent;
     this.tools = tools;
     this.directory = directory;
+    this.branches = branches;
+    this.content = content;
     this.ledger = ledger;
     this.replyFilter = replyFilter;
     this.json = json;
@@ -108,6 +116,13 @@ class PlayService {
         nerve
             .spend(sessionId, level)
             .orElseThrow(() -> new PlayExceptions.NerveExhaustedException(level));
+    // A session keeps its branch across levels; only the vault is restocked on a level's first
+    // attempt (ADR-0016). A refunded attempt makes the next one "first" again, which is harmless:
+    // the restock only fills a shortfall.
+    long restockedCents = 0;
+    if (spent.nerveRemaining().get(Integer.toString(level)) == content.level(level).nerve() - 1) {
+      restockedCents = branches.restockVault(sessionId, level);
+    }
     var cached = cache.find(level, spent.dailySeed(), combo.id());
     if (cached.isEmpty() && llm.live() && budget.exhausted()) {
       nerve.refund(sessionId, level);
@@ -129,6 +144,9 @@ class PlayService {
       span.tag("bankjob.attempt_id", attempt.id().toString());
       span.tag("bankjob.level", level);
       span.tag("bankjob.combo_id", combo.id());
+      if (restockedCents > 0) {
+        span.tag("bankjob.vault_restocked_cents", restockedCents);
+      }
     }
 
     String reply;

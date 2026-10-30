@@ -7,6 +7,7 @@ import dev.bradenevans.bankjob.gameapi.ledger.AccountSnapshot;
 import dev.bradenevans.bankjob.gameapi.ledger.LedgerService;
 import dev.bradenevans.bankjob.gameapi.ledger.Leg;
 import dev.bradenevans.bankjob.gameapi.ledger.PostingRequest;
+import dev.bradenevans.bankjob.gameapi.ledger.TransferCommand;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -93,6 +94,31 @@ public class BranchProvisioner {
     long total = openingLegs.stream().mapToLong(Leg::amountCents).sum();
     openingLegs.add(new Leg(equity.id(), -total));
     ledger.post(new PostingRequest("Opening balances", null, openingLegs));
+  }
+
+  /**
+   * Head office tops the vault back up to its opening balance (ADR-0016). Called when a session
+   * starts a level it has not played yet, so a vault emptied on one level does not leave every
+   * later level with nothing to steal; changed phones and the mule's haul carry over. The transfer
+   * has no attempt, so it is not a teller credit for the anomaly rules. Returns the cents added.
+   */
+  public long restockVault(UUID sessionId, int level) {
+    AccountSnapshot vault = ledger.account(sessionId, BranchSeed.VAULT_NUMBER).orElseThrow();
+    long shortfall = BranchSeed.VAULT_OPENING_CENTS - vault.balanceCents();
+    if (shortfall <= 0) {
+      return 0;
+    }
+    AccountSnapshot equity = ledger.account(sessionId, BranchSeed.EQUITY_NUMBER).orElseThrow();
+    ledger.transfer(
+        new TransferCommand(
+            sessionId,
+            equity.id(),
+            vault.id(),
+            shortfall,
+            "Head office restocks the vault for level " + level,
+            null,
+            null));
+    return shortfall;
   }
 
   private String answerHash(BranchSeed.SeedCustomer seed, SecurityTopic topic, String answer) {

@@ -28,6 +28,8 @@ rotation (`content/daily.yaml`). Every customer gets that day's security questio
 hash of their answer, and a `security_answer_hint`: the answer spelled out letter by letter,
 which `lookup_account` returns (the Level 3 leak). `phone` is the only column that changes
 after provisioning (`update_contact_info`, the Level 4 gap).
+The branch carries over from level to level (ADR-0016); only the vault is topped back up to its
+opening balance, by a transfer from equity with no attempt, when a session starts a new level.
 
 ## Ledger
 

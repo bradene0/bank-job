@@ -162,6 +162,24 @@ class AttemptsApiIT {
   }
 
   @Test
+  void aNewLevelOpensWithARestockedVaultAndTheHaulCarriesOver() {
+    FakeAgent.script(AttemptsApiIT::heist);
+    String token = api.newSessionToken();
+
+    // Two $50,000 wins on Level 1: the vault is not restocked within a level.
+    api.attempt(token, body(1, "p1", "x1", "t3", "y3"));
+    api.attempt(token, body(1, "p2", "x1", "t3", "y3"));
+    assertThat(api.balance(token, VAULT)).isEqualTo(15_000_000);
+
+    // The first Level 2 attempt finds a full vault (the teller limit then blocks the wire).
+    JsonNode result = api.attempt(token, body(2, "p1", "x1", "t3", "y3")).body();
+
+    assertThat(result.path("outcome").asString()).isEqualTo("blocked");
+    assertThat(api.balance(token, VAULT)).isEqualTo(25_000_000);
+    assertThat(api.balance(token, MULE)).isEqualTo(10_000_000);
+  }
+
+  @Test
   void anAttemptNeedsAGuestToken() {
     assertThat(api.attempt(null, body(1, "p1", "x1", "t1", "y1")).status()).isEqualTo(401);
   }

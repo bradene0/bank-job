@@ -54,11 +54,14 @@ transfer or contact change, otherwise `refused`.
 
 The velocity rule reads `account_signals`, which the `anomaly-scoring` consumer builds from
 `TransferPosted` events. That projection can lag the ledger, so the rule denies while any
-ledger event for the destination account is still unprocessed (ADR-0013). A session keeps
-one branch across levels, so a phone changed through the
-Level 4 gap is still changed on Level 5, where the step-up text then reaches the caller.
-That leaves the velocity rule and the guardrail as the last lines of defense. The eval
-matrix (M5) should measure this chain.
+ledger event for the destination account is still unprocessed (ADR-0013).
+
+A session keeps one branch across levels (ADR-0016): a phone changed through the Level 4 gap is
+still the caller's on Level 5, where the step-up text then reaches the caller, and wins stay in
+the mule. That chain is intended; the velocity rule and the guardrail are the last lines of
+defense. Only the vault is restocked, on a session's first attempt at each level, so an early
+"Drain the Vault" does not leave later levels with nothing to steal. The eval matrix measures
+the chain as its own setup.
 
 ## Levels
 
