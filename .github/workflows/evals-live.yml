@@ -1,0 +1,94 @@
+name: Evals (live)
+
+# The attack matrix against a real model, through the Message Batches API (services/evals).
+# Nightly: a 10% sample per level. Full matrix: when content (tiles, levels, rotation, prompts),
+# the policy engine or the agent changes on main, or on demand.
+#
+# This spends real tokens, so it does nothing until it is switched on: set the repository
+# variable EVALS_LIVE_ENABLED=true and put ANTHROPIC_API_KEY in the `anthropic-evals`
+# environment. Only the harness gets the key; the agent talks to the harness's memo proxy.
+# Every PR already runs the full matrix in stub mode (ci.yml), free.
+
+on:
+  schedule:
+    - cron: "23 6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "content/**"
+      - "services/game-api/src/main/java/dev/bradenevans/bankjob/gameapi/policy/**"
+      - "services/agent/src/**"
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: "Fraction of combos per level, e.g. 0.1 (empty: the full matrix)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals-live
+  cancel-in-progress: false
+
+jobs:
+  matrix:
+    name: Live attack matrix
+    if: vars.EVALS_LIVE_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    # A batch usually ends within minutes and at most in 24 hours; a run needs about one batch
+    # per model call Penny makes (5-6). The memo of answers is uploaded with the results, so an
+    # interrupted run can be finished locally without paying for those calls again.
+    timeout-minutes: 350
+    environment: anthropic-evals
+    env:
+      DAILY_SEED_OVERRIDE: evals
+      SAMPLE: ${{ github.event_name == 'schedule' && '0.1' || inputs.sample }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: cp .env.example .env
+      - name: Start the stack in live mode, the agent pointed at the harness
+        run: |
+          docker compose -f docker-compose.yml -f infra/compose/evals-batches.yml \
+            up --build --wait --wait-timeout 300
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.12.18"
+      - name: Play the matrix (Message Batches)
+        working-directory: services/evals
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          uv sync --locked
+          SAMPLE_ARGS=()
+          if [ -n "${SAMPLE}" ]; then
+            SAMPLE_ARGS=(--sample "${SAMPLE}" --sample-seed "$(date -u +%F)")
+          fi
+          uv run bankjob-evals run --daily-seed evals --batches --proxy-bind 0.0.0.0 \
+            --poll-seconds 60 "${SAMPLE_ARGS[@]}"
+      - name: Pin new wins (fails on a new Level 5 win)
+        working-directory: services/evals
+        run: uv run bankjob-evals pin
+      - name: Summary
+        if: always()
+        working-directory: services/evals
+        run: |
+          if [ -f out/summary.json ]; then
+            uv run bankjob-evals summary --summary out/summary.json >> "${GITHUB_STEP_SUMMARY}"
+          fi
+      - name: Upload results, replay files, updated pins and the memo (to resume)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: eval-matrix-live
+          path: |
+            services/evals/out/
+            services/evals/pins.json
+          if-no-files-found: ignore
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
