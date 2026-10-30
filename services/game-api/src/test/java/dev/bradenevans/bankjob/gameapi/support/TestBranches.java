@@ -72,7 +72,7 @@ public class TestBranches {
         .put("pretext", ids[1])
         .put("technique", ids[2])
         .put("payload", ids[3]);
-    return attempts.create(sessionId, level, comboId, tiles, DAILY_SEED);
+    return attempts.create(sessionId, level, comboId, tiles, DAILY_SEED, null);
   }
 
   /** The session's accounts keyed by number, e.g. "BV-MULE-01". */

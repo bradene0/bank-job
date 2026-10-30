@@ -87,7 +87,9 @@ public final class FakeAgent {
       return;
     }
     JsonNode body = JSON.readTree(exchange.getRequestBody().readAllBytes());
-    try (McpTestClient mcp = McpTestClient.connect(mcpPort, body.path("attemptToken").asString())) {
+    String traceparent = exchange.getRequestHeaders().getFirst("traceparent");
+    try (McpTestClient mcp =
+        McpTestClient.connect(mcpPort, body.path("attemptToken").asString(), traceparent)) {
       JsonNode brief = mcp.brief();
       String reply = script.run(mcp, brief);
       Map<String, Object> response = new LinkedHashMap<>();

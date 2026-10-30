@@ -18,6 +18,8 @@ import dev.bradenevans.bankjob.gameapi.policy.PolicyDecision;
 import dev.bradenevans.bankjob.gameapi.policy.PolicyEngine;
 import dev.bradenevans.bankjob.gameapi.policy.ToolRequest;
 import dev.bradenevans.bankjob.gameapi.tools.ToolArguments.InvalidArgumentsException;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
@@ -39,6 +41,9 @@ import tools.jackson.databind.node.ObjectNode;
  *
  * <p>Calls within one attempt are serialized, so per-attempt limits cannot be raced by parallel
  * tool calls. The lock is in-process: game-api runs as a single replica (ADR-0001).
+ *
+ * <p>Each call is a span ({@code bank tool <name>}) tagged with the policy decision and reason
+ * code, so the attempt's trace shows what was asked, what was decided and what the ledger did.
  */
 @Service
 @RegisterReflectionForBinding(GuardrailVerdict.class) // stored as JSON in tool_calls.review
@@ -67,6 +72,7 @@ public class BankTools {
   private final BranchDirectory directory;
   private final LedgerService ledger;
   private final JsonMapper json;
+  private final ObservationRegistry observations;
   private final ReentrantLock[] locks = new ReentrantLock[LOCK_STRIPES];
 
   BankTools(
@@ -76,7 +82,8 @@ public class BankTools {
       PolicyEngine policy,
       BranchDirectory directory,
       LedgerService ledger,
-      JsonMapper json) {
+      JsonMapper json,
+      ObservationRegistry observations) {
     this.attempts = attempts;
     this.prompts = prompts;
     this.content = content;
@@ -84,6 +91,7 @@ public class BankTools {
     this.directory = directory;
     this.ledger = ledger;
     this.json = json;
+    this.observations = observations;
     for (int i = 0; i < LOCK_STRIPES; i++) {
       locks[i] = new ReentrantLock();
     }
@@ -100,17 +108,26 @@ public class BankTools {
       throw new IllegalArgumentException("Not a bank tool: " + tool); // MCP routes known names only
     }
     AttemptRecord attempt = found.get();
+    Observation observation =
+        Observation.createNotStarted("bankjob.tool.call", observations)
+            .contextualName("bank tool " + tool)
+            .lowCardinalityKeyValue("bankjob.tool", tool)
+            .highCardinalityKeyValue("bankjob.attempt_id", attemptId.toString());
     ReentrantLock lock = locks[Math.floorMod(attemptId.hashCode(), LOCK_STRIPES)];
     lock.lock();
     try {
-      return callLocked(attempt, tool, args, guardrail);
+      return observation.observe(() -> callLocked(attempt, tool, args, guardrail, observation));
     } finally {
       lock.unlock();
     }
   }
 
   private ToolOutcome callLocked(
-      AttemptRecord attempt, String tool, Map<String, Object> args, GuardrailReviewer guardrail) {
+      AttemptRecord attempt,
+      String tool,
+      Map<String, Object> args,
+      GuardrailReviewer guardrail,
+      Observation observation) {
     long started = System.nanoTime();
     List<ToolCallRecord> history = attempts.toolCalls(attempt.id());
     int ordinal = history.size() + 1;
@@ -120,6 +137,7 @@ public class BankTools {
     try {
       request = ToolArguments.parse(tool, args);
     } catch (InvalidArgumentsException e) {
+      decided(observation, false, "invalid_arguments");
       ToolOutcome outcome = error("invalid_arguments", e.getMessage());
       record(
           attempt,
@@ -137,6 +155,7 @@ public class BankTools {
     PolicyDecision decision =
         policy.authorize(
             content.level(attempt.level()), facts(attempt, history), request, guardrail);
+    decided(observation, decision.allowed(), decision.code());
     ToolOutcome outcome =
         decision.allowed() ? execute(attempt, request) : error("denied", decision.reason());
     record(
@@ -150,6 +169,12 @@ public class BankTools {
         decision.review(),
         started);
     return outcome;
+  }
+
+  private static void decided(Observation observation, boolean allowed, String code) {
+    observation
+        .lowCardinalityKeyValue("bankjob.policy.decision", allowed ? "allow" : "deny")
+        .lowCardinalityKeyValue("bankjob.policy.reason_code", code);
   }
 
   private AttemptFacts facts(AttemptRecord attempt, List<ToolCallRecord> history) {

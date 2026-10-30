@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Bank Job API
-  version: 0.3.0
+  version: 0.4.0
   description: >
     Kept in sync with the code and checked in CI with Schemathesis against the running
     compose stack. Operations tagged `planned` are designed but not implemented yet, and
@@ -13,6 +13,7 @@ tags:
   - name: sessions
   - name: accounts
   - name: attempts
+  - name: traces
   - name: planned
     description: Not implemented yet; excluded from contract tests.
 
@@ -184,13 +185,38 @@ paths:
 
   /v1/traces/{traceId}:
     get:
-      tags: [planned]
-      summary: Simplified trace for the "Under the hood" panel
+      tags: [traces]
+      summary: Simplified trace of one of the caller's attempts, for the "Under the hood" panel
+      description: >
+        Read back from Jaeger and reduced to allowlisted attributes. A trace id the caller's
+        session did not produce is a 404, the same as one that does not exist. Spans arrive
+        within a second or two of the attempt; poll until they do.
       security: [{ guestJwt: [] }]
       parameters:
-        - { name: traceId, in: path, required: true, schema: { type: string } }
+        - name: traceId
+          in: path
+          required: true
+          schema: { type: string, examples: [4bf92f3577b34da6a3ce929d0e0e4736] }
       responses:
-        "200": { description: Spans }
+        "200":
+          description: The trace's spans in start order (empty until the first spans arrive)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Trace" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404":
+          description: Not a trace of this session's attempts
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "503":
+          description: The trace store is unavailable
+          headers:
+            Retry-After:
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /v1/leaderboard:
     get:
@@ -279,7 +305,11 @@ components:
         toolCalls:
           type: array
           items: { $ref: "#/components/schemas/ToolCall" }
-        traceId: { type: [string, "null"], description: "Set once tracing lands (M3)" }
+        traceId:
+          description: The attempt's trace (the browser's, if it sent a traceparent); GET /v1/traces/{traceId}
+          type: [string, "null"]
+          pattern: "^[0-9a-f]{32}$"
+
 
     ToolCall:
       type: object
@@ -298,6 +328,38 @@ components:
           description: Level 5 guardrail verdict, when one was asked
           type: [object, "null"]
         latencyMs: { type: integer, minimum: 0 }
+
+    Trace:
+      type: object
+      additionalProperties: false
+      required: [traceId, spans]
+      properties:
+        traceId: { type: string, pattern: "^[0-9a-f]{32}$" }
+        spans:
+          type: array
+          items: { $ref: "#/components/schemas/Span" }
+
+    Span:
+      type: object
+      additionalProperties: false
+      required: [spanId, parentSpanId, service, name, kind, startOffsetMs, durationMs, error, attributes]
+      properties:
+        spanId: { type: string, pattern: "^[0-9a-f]{16}$" }
+        parentSpanId:
+          description: Null for a root; the browser's span id for the first game-api span
+          type: [string, "null"]
+        service: { type: string, examples: [game-api, agent] }
+        name: { type: string, examples: ["bank tool transfer_funds"] }
+        kind: { type: string, enum: [unspecified, internal, server, client, producer, consumer] }
+        startOffsetMs: { type: number, minimum: 0, description: Milliseconds after the trace's first span }
+        durationMs: { type: number, minimum: 0 }
+        error: { type: boolean }
+        attributes:
+          description: >
+            Allowlisted span attributes only (bankjob.*, gen_ai.*, mcp.*, messaging.*, outbox.*,
+            HTTP method/route/status, db.system/db.operation); never SQL or prompts.
+          type: object
+          additionalProperties: { type: [string, number, boolean] }
 
     Problem:
       description: RFC 9457 problem details

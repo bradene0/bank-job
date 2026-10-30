@@ -12,6 +12,8 @@ import dev.bradenevans.bankjob.gameapi.policy.GuardrailVerdict;
 import dev.bradenevans.bankjob.gameapi.security.AttemptTokenService;
 import dev.bradenevans.bankjob.gameapi.session.SessionNerve;
 import dev.bradenevans.bankjob.gameapi.tools.BankTools;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,6 +39,7 @@ class PlayService {
   /** An attempt's result and everything the "Under the hood" panel needs. */
   record Played(
       AttemptRecord attempt,
+      String traceId,
       Outcome outcome,
       long amountCents,
       String reply,
@@ -56,6 +59,7 @@ class PlayService {
   private final LedgerQueries ledger;
   private final ReplyFilter replyFilter;
   private final JsonMapper json;
+  private final Tracer tracer;
   // One attempt at a time per session: a second click cannot double-spend model calls.
   private final Set<UUID> sessionsInFlight = ConcurrentHashMap.newKeySet();
 
@@ -71,7 +75,8 @@ class PlayService {
       BranchDirectory directory,
       LedgerQueries ledger,
       ReplyFilter replyFilter,
-      JsonMapper json) {
+      JsonMapper json,
+      Tracer tracer) {
     this.nerve = nerve;
     this.attempts = attempts;
     this.cache = cache;
@@ -84,6 +89,7 @@ class PlayService {
     this.ledger = ledger;
     this.replyFilter = replyFilter;
     this.json = json;
+    this.tracer = tracer;
   }
 
   Played play(UUID sessionId, int level, Combo combo) {
@@ -109,9 +115,21 @@ class PlayService {
           "over_budget", "Penny is on her break (the daily model budget is spent).");
     }
 
+    Span span = tracer.currentSpan();
+    String traceId = span == null ? null : span.context().traceId();
     AttemptRecord attempt =
         attempts.create(
-            sessionId, level, combo.id(), json.valueToTree(tiles(combo)), spent.dailySeed());
+            sessionId,
+            level,
+            combo.id(),
+            json.valueToTree(tiles(combo)),
+            spent.dailySeed(),
+            traceId);
+    if (span != null) {
+      span.tag("bankjob.attempt_id", attempt.id().toString());
+      span.tag("bankjob.level", level);
+      span.tag("bankjob.combo_id", combo.id());
+    }
 
     String reply;
     String stopReason;
@@ -158,8 +176,19 @@ class PlayService {
     if (cached.isEmpty() && cacheable(runModel)) {
       cache.store(level, spent.dailySeed(), combo.id(), transcript(calls, reply, stopReason));
     }
+    if (span != null) {
+      span.tag("bankjob.outcome", outcome.wire());
+      span.tag("bankjob.cached", cached.isPresent());
+    }
     return new Played(
-        attempt, outcome, amount, filteredReply, cached.isPresent(), spent.nerveRemaining(), calls);
+        attempt,
+        traceId,
+        outcome,
+        amount,
+        filteredReply,
+        cached.isPresent(),
+        spent.nerveRemaining(),
+        calls);
   }
 
   /** Only cache decisions from the model the cache key names (guards a mode mismatch). */

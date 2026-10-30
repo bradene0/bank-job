@@ -21,9 +21,17 @@ public final class McpTestClient implements AutoCloseable {
   }
 
   public static McpTestClient connect(int port, String bearerToken) {
+    return connect(port, bearerToken, null);
+  }
+
+  /** With a traceparent, every MCP request joins that trace, as the real agent's do. */
+  public static McpTestClient connect(int port, String bearerToken, String traceparent) {
     HttpRequest.Builder request = HttpRequest.newBuilder();
     if (bearerToken != null) {
       request.header("Authorization", "Bearer " + bearerToken);
+    }
+    if (traceparent != null) {
+      request.header("traceparent", traceparent);
     }
     HttpClientStreamableHttpTransport transport =
         HttpClientStreamableHttpTransport.builder("http://localhost:" + port)

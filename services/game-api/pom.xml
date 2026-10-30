@@ -25,6 +25,8 @@
     <jqwik.version>1.10.2</jqwik.version>
     <archunit.version>1.5.1</archunit.version>
     <mcp.version>2.1.0</mcp.version>
+    <!-- JDBC spans for traces; 2.3.x targets Spring Boot 4.1. -->
+    <datasource-micrometer.version>2.3.0</datasource-micrometer.version>
   </properties>
 
   <dependencies>
@@ -80,6 +82,17 @@
       <artifactId>mcp-json-jackson3</artifactId>
       <version>${mcp.version}</version>
     </dependency>
+    <!-- Micrometer Tracing with the OpenTelemetry bridge and OTLP exporter. No javaagent: it
+         cannot instrument a native image (ADR-0004). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-opentelemetry</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>net.ttddyy.observation</groupId>
+      <artifactId>datasource-micrometer-spring-boot</artifactId>
+      <version>${datasource-micrometer.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -104,6 +117,12 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- @AutoConfigureTracing: Spring Boot tests turn tracing off unless asked. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-micrometer-tracing-test</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

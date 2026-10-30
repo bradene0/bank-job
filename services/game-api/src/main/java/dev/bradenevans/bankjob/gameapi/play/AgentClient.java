@@ -1,5 +1,6 @@
 package dev.bradenevans.bankjob.gameapi.play;
 
+import io.micrometer.observation.ObservationRegistry;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.Map;
@@ -13,7 +14,8 @@ import org.springframework.web.client.RestClientException;
 
 /**
  * Calls the agent service (docs/contracts/agent-mcp.md). Requests carry only the attempt token and
- * ids, never text: the agent reads everything it needs from game-api's MCP server.
+ * ids, never text: the agent reads everything it needs from game-api's MCP server. Each call is
+ * traced, and its {@code traceparent} header puts the agent's spans in the attempt's trace.
  */
 @Component
 @RegisterReflectionForBinding({
@@ -41,17 +43,29 @@ class AgentClient {
   private final RestClient runs;
   private final RestClient reviews;
 
-  AgentClient(LlmProperties properties) {
+  AgentClient(LlmProperties properties, ObservationRegistry observations) {
     LlmProperties.Agent agent = properties.agent();
-    this.runs = client(agent, agent.runTimeout());
-    this.reviews = client(agent, agent.reviewTimeout());
+    this.runs = client(agent, agent.runTimeout(), observations);
+    this.reviews = client(agent, agent.reviewTimeout(), observations);
   }
 
-  private static RestClient client(LlmProperties.Agent agent, Duration readTimeout) {
-    HttpClient http = HttpClient.newBuilder().connectTimeout(agent.connectTimeout()).build();
+  private static RestClient client(
+      LlmProperties.Agent agent, Duration readTimeout, ObservationRegistry observations) {
+    // HTTP/1.1, which is all uvicorn speaks: the JDK client's default h2c upgrade attempt is
+    // rejected by uvicorn, and the next request on that connection then lands in the previous
+    // request's trace.
+    HttpClient http =
+        HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(agent.connectTimeout())
+            .build();
     JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(http);
     factory.setReadTimeout(readTimeout);
-    return RestClient.builder().baseUrl(agent.url()).requestFactory(factory).build();
+    return RestClient.builder()
+        .baseUrl(agent.url())
+        .requestFactory(factory)
+        .observationRegistry(observations)
+        .build();
   }
 
   RunResult run(String attemptToken) {

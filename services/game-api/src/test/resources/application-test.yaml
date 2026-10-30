@@ -1,8 +1,17 @@
 bankjob:
   secrets:
     allow-ephemeral: true
+  traces:
+    query-url: http://127.0.0.1:9  # nothing listens: the trace store is "unavailable"
   sessions:
     max-per-ip-per-hour: 100000
 logging:
   level:
     org.testcontainers: warn
+management:
+  tracing:
+    export:
+      # Spans, trace ids and propagation as in production; only the OTLP exporter is off.
+      # (export.enabled=false would also switch propagation to a no-op.)
+      otlp:
+        enabled: false

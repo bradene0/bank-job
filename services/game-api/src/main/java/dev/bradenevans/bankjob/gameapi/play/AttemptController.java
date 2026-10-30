@@ -73,7 +73,7 @@ class AttemptController {
         played.cached(),
         played.nerveRemaining(),
         played.toolCalls().stream().map(AttemptController::view).toList(),
-        null); // tracing lands in M3
+        played.traceId());
   }
 
   private static int level(JsonNode body) {

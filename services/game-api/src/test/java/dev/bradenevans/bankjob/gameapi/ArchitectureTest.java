@@ -36,6 +36,7 @@ class ArchitectureTest {
               "..gameapi.security..",
               "..gameapi.session..",
               "..gameapi.tools..",
+              "..gameapi.traces..",
               "..gameapi.web..");
 
   /**

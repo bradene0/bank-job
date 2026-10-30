@@ -38,13 +38,17 @@ public class AttemptStore {
     this.json = json;
   }
 
+  /**
+   * @param traceId the trace this attempt runs in, so its owner can fetch it later; null if the
+   *     request is not traced
+   */
   @Transactional
   public AttemptRecord create(
-      UUID sessionId, int level, String comboId, JsonNode tiles, String dailySeed) {
+      UUID sessionId, int level, String comboId, JsonNode tiles, String dailySeed, String traceId) {
     return jdbc.sql(
             """
-            INSERT INTO attempts (session_id, level, combo_id, tiles, daily_seed)
-            VALUES (:session, :level, :combo, :tiles::jsonb, :seed)
+            INSERT INTO attempts (session_id, level, combo_id, tiles, daily_seed, trace_id)
+            VALUES (:session, :level, :combo, :tiles::jsonb, :seed, :trace)
             RETURNING id, created_at, session_id, level, combo_id, daily_seed, outcome
             """)
         .param("session", sessionId)
@@ -52,7 +56,19 @@ public class AttemptStore {
         .param("combo", comboId)
         .param("tiles", json.writeValueAsString(tiles))
         .param("seed", dailySeed)
+        .param("trace", traceId)
         .query(AttemptStore::attempt)
+        .single();
+  }
+
+  /** True if this session ran an attempt in the given trace (guards GET /v1/traces/{id}). */
+  @Transactional(readOnly = true)
+  public boolean sessionOwnsTrace(UUID sessionId, String traceId) {
+    return jdbc.sql(
+            "SELECT EXISTS (SELECT 1 FROM attempts WHERE session_id = :session AND trace_id = :trace)")
+        .param("session", sessionId)
+        .param("trace", traceId)
+        .query(Boolean.class)
         .single();
   }
 

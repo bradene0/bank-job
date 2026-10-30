@@ -6,6 +6,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Map;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -40,6 +41,11 @@ public final class ApiClient {
   }
 
   public Response send(String method, String path, String token, String jsonBody) {
+    return send(method, path, token, jsonBody, Map.of());
+  }
+
+  public Response send(
+      String method, String path, String token, String jsonBody, Map<String, String> headers) {
     HttpRequest.Builder request =
         HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
             .method(
@@ -53,6 +59,7 @@ public final class ApiClient {
     if (token != null) {
       request.header("Authorization", "Bearer " + token);
     }
+    headers.forEach(request::header);
     try {
       HttpResponse<String> response =
           http.send(request.build(), HttpResponse.BodyHandlers.ofString());

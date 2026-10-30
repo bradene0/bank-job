@@ -52,6 +52,9 @@ bankjob:
   game:
     daily-seed-override: ${DAILY_SEED_OVERRIDE:}
     max-tool-calls: ${PENNY_MAX_TOOL_CALLS:8}
+  traces:
+    query-url: ${JAEGER_QUERY_URL:http://localhost:16686}
+    timeout: 3s
   llm:
     # game-api and the agent read the same LLM_MODE; stub never calls the model.
     mode: ${LLM_MODE:stub}
@@ -67,7 +70,48 @@ bankjob:
       run-timeout: 45s
       review-timeout: 20s
 
+# One span per SQL statement, no parameter values (they can hold security answers).
+jdbc:
+  includes: query
+  resultset-operations:
+    enabled: false
+  datasource-proxy:
+    include-parameter-values: false
+
 management:
+  tracing:
+    sampling:
+      probability: 1.0  # low traffic; every attempt is traced
+    propagation:
+      # Only W3C trace context, from the browser and between services.
+      consume: [w3c]
+      produce: [w3c]
+    baggage:
+      # Nothing uses baggage, and a browser's baggage header would be relayed to the agent.
+      enabled: false
+  observations:
+    enable:
+      # Per-filter security spans and scheduled jobs add noise, not insight.
+      spring.security: false
+      tasks.scheduled: false
+  opentelemetry:
+    # service.name comes from spring.application.name.
+    tracing:
+      export:
+        schedule-delay: 1s
+        otlp:
+          # Jaeger v2 is the OTLP collector (ADR-0007).
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+          transport: http
+  # Jaeger receives traces only; metrics and logs are not exported over OTLP.
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  logging:
+    export:
+      otlp:
+        enabled: false
   endpoints:
     web:
       exposure:
