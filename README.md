@@ -8,7 +8,7 @@ how far each attack got.
 
 ## What's underneath
 
-- A double-entry ledger in PostgreSQL behind a Java 21 / Spring Boot API
+- A double-entry ledger in PostgreSQL behind a Java 25 / Spring Boot API (GraalVM native image)
 - Kafka event streaming via a transactional outbox
 - An AI teller (Python, tool calling) whose bank tools are served over MCP
 - Five defense levels that are real authorization controls, not prompt tweaks
@@ -29,7 +29,7 @@ docker compose down -v        # stop and delete local data
 | Service | URL |
 |---|---|
 | Game UI | http://localhost:5173 |
-| game-api | http://localhost:8080/healthz, `POST /v1/sessions`, `POST /v1/attempts`, `GET /v1/accounts` (see [OpenAPI](docs/contracts/openapi.yaml)) |
+| game-api | http://localhost:8080/healthz, `POST /v1/sessions`, `POST /v1/attempts`, `GET /v1/accounts`, `GET /v1/traces/{id}`, `GET /v1/leaderboard` (see [OpenAPI](docs/contracts/openapi.yaml)) |
 | agent | http://localhost:8000/healthz |
 | Jaeger UI | http://localhost:16686 |
 | Postgres | `localhost:5432` |
@@ -51,6 +51,15 @@ curl -s localhost:8080/v1/attempts -H "Authorization: Bearer $TOKEN" \
   -d '{"level": 3, "tiles": {"persona": "p2", "pretext": "x2", "technique": "t2", "payload": "y1"}}' | jq
 ```
 
+Every attempt is one trace, from the request through Penny's MCP tool calls, the ledger
+and the outbox to the Kafka consumers. Open the `traceId` from the response in the Jaeger
+UI, or fetch the simplified version the game shows:
+
+```
+curl -s localhost:8080/v1/traces/<traceId> -H "Authorization: Bearer $TOKEN" | jq '.spans[].name'
+python3 infra/compose/check_trace.py   # the CI check: one attempt, one connected trace
+```
+
 The default `LLM_MODE=stub` runs a scripted Penny and never calls the model. Live mode
 (`LLM_MODE=live` plus `ANTHROPIC_API_KEY` in `.env`) runs Penny on Claude.
 
@@ -62,6 +71,7 @@ Per-service development (tests, lint) is described in each service's README.
 - [Security model and levels](docs/security-and-levels.md)
 - [Data model](docs/data-model.md)
 - [game-api ⇄ agent contract](docs/contracts/agent-mcp.md)
+- [Kafka events](docs/contracts/events/README.md)
 - [Testing strategy](docs/testing-strategy.md)
 - [Decision records](docs/adr/)
 

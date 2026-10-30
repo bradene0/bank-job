@@ -65,9 +65,12 @@ live.bankjob.bradenevans.dev  (Cloudflare proxy → EC2 t4g.large, k3s, Traefik)
    **Every tool call is authorized by the game-api policy engine for the attempt's
    level** and recorded with its decision (see `security-and-levels.md`). On Level 5,
    game-api asks the guardrail agent about sensitive calls before allowing them.
-5. Each transfer commits its postings (and, from M3, outbox rows) in one Postgres
-   transaction. The outbox publisher sends events to Kafka; consumers update anomaly
-   scores, leaderboard and audit.
+5. Each change commits with its event in one Postgres transaction (the transactional
+   outbox, ADR-0002): the attempt row with `AttemptSubmitted`, each tool call with
+   `ToolCalled` and `PolicyDecided`, a transfer's postings with `TransferPosted`. The outbox
+   relay sends committed events to Kafka; consumers update anomaly signals (which Level 5's
+   velocity rule reads, ADR-0013), the leaderboard and the audit log. If Kafka is down the
+   game keeps working and the events wait in the outbox.
 6. game-api decides the outcome from the ledger, filters Penny's reply, and returns the
    outcome, the reply, the tool-call timeline and the trace ID. The UI's "Under the hood"
    panel renders the trace. If the agent is down or the model budget is spent, the
@@ -102,12 +105,23 @@ makes caching and evals exact.
 
 Kafka topics: `bankjob.attempts`, `bankjob.tool-calls`, `bankjob.ledger`,
 `bankjob.outcomes`, each with a `.dlq` dead-letter topic. Trace context travels in
-Kafka headers.
+Kafka headers. Delivery, consumers and failure handling: `docs/contracts/events/README.md`.
 
 ## Observability
 
 - One trace per attempt: browser span → game-api → agent → each MCP tool call →
-  ledger/DB → outbox → Kafka consumers.
+  ledger/DB → outbox → Kafka consumers. game-api continues the browser's `traceparent`
+  (W3C only, no baggage); the agent continues game-api's, and every MCP request carries
+  the agent's span back. Each outbox row stores its writer's trace context, so the relay's
+  send (and every consumer) joins the trace even after the HTTP request has returned.
+- game-api: Micrometer Tracing with the OpenTelemetry bridge, OTLP/HTTP to Jaeger; one span
+  per SQL statement (datasource-micrometer, no parameter values), per bank tool call
+  (tagged with the policy decision), per Kafka send and per consumer. Health probes, trace
+  polling and database calls outside any operation are not traced. The agent: OTel SDK,
+  FastAPI instrumentation, the MCP SDK's client spans, and GenAI `chat <model>` spans with
+  token usage (never prompt or reply text).
+- `GET /v1/traces/{id}` reads the trace back from Jaeger's query API for its owner only,
+  reduced to allowlisted attributes, for the "Under the hood" panel.
 - Metrics: request rate/latency/errors per endpoint, LLM latency and token spend,
   outbox lag, consumer lag, wake-to-ready time.
 - The game UI fetches its own trace by ID to render "Under the hood".

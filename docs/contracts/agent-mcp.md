@@ -11,6 +11,15 @@ game-api's MCP server, which validates the token on every request. A forged or e
 token fails on the first MCP call, before any model call is made, so the agent cannot be
 used to send free text to the model even if its port were exposed (ADR-0003, ADR-0011).
 
+## Trace context
+
+Every request in both directions carries a W3C `traceparent` header (no `baggage`), so an
+attempt is one trace: game-api's `POST /v1/runs` client span is the parent of the agent's
+server span; the MCP SDK opens an `MCP send <method>` client span per request, and the agent
+injects it into the HTTP headers, so game-api's `/mcp` server span and its `bank tool <name>`
+span nest under it. (The Python SDK also puts the context in `params._meta`; the Java SDK
+does not read it, and the header carries the same span.) Both sides speak HTTP/1.1.
+
 ## Attempt token
 
 ES256 JWT minted by game-api for one attempt, signed with the same key as guest tokens.

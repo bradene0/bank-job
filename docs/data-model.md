@@ -65,10 +65,18 @@ accounts; raw-SQL tests prove the database rejects violations on its own.
 
 ```
 idempotency_keys(key PK, request_hash, response_json jsonb, created_at)
-outbox_events(id, aggregate_type, aggregate_id, event_type, payload jsonb,
-              trace_context jsonb, created_at, published_at NULL)   -- partial index on unpublished
+outbox_events(id, aggregate_type, aggregate_id, event_type, topic, message_key,
+              payload jsonb, trace_context jsonb, created_at, published_at NULL)
+              -- partial index on unpublished; (topic, message_key) for the staleness fence
 processed_events(consumer, event_id, processed_at, PK (consumer, event_id))
 ```
+
+**Outbox (ADR-0002).** Every event is an `outbox_events` row written in the transaction
+of the change it describes; the row id is the event id. `trace_context` holds the writer's
+W3C trace context, so the event continues the request's trace when the relay sends it.
+Published rows are deleted after a day. A consumer claims `(consumer, event_id)` in
+`processed_events` in the same transaction as its update, so a redelivered event is a
+no-op. Event payloads: `docs/contracts/events/`.
 
 An idempotency key is written in the same transaction as the transfer's postings, so a key
 exists only if its transfer committed. A retry with the same key and request replays the
@@ -87,8 +95,11 @@ tool_calls(id, attempt_id, attempt_created_at, ordinal, tool, args jsonb,
            policy_decision ['allow','deny'], policy_reason, result jsonb, review jsonb NULL,
            latency_ms, created_at, UNIQUE (attempt_id, ordinal),
            FK (attempt_id, attempt_created_at) → attempts)
-leaderboard(session_id PK → sessions, display_alias, score, best_level, updated_at)
-audit_log(id, actor, action, target, details jsonb, created_at)
+leaderboard(session_id PK → sessions, display_alias, score, best_level NULL,
+            attempts_used, stolen_cents, updated_at)            -- Kafka projection
+audit_log(id, event_id UNIQUE NULL, actor, action, target, details jsonb, created_at)
+account_signals(account_id PK, session_id, teller_credits, teller_credit_cents,
+                last_teller_credit_at, updated_at)                -- Kafka projection
 llm_usage(day PK, input_tokens, output_tokens, est_cost_micros)  -- budget switch reads this
 attempt_cache(level, daily_seed, combo_id, variant, transcript jsonb, created_at,
               PRIMARY KEY (level, daily_seed, combo_id, variant))
@@ -101,11 +112,19 @@ a hit replays them through the policy engine and the current session's ledger (A
 `variant` is the model id plus a fingerprint of the content files. `llm_usage` counts
 micro-dollars, because a Haiku-class attempt costs a fraction of a cent.
 
+**Projections** are kept by Kafka consumers and can be rebuilt from the events, so they
+carry no foreign keys into the tables the events came from. Their updates commute (sums,
+counts, `greatest()`), so redelivered or reordered events cannot skew them.
+`account_signals` feeds the Level 5 velocity rule (ADR-0013). `leaderboard` gets a row on a
+session's first finished attempt; `best_level` stays NULL until a win, and only rows with a
+win are ranked. `audit_log` gets one row per event (`event_id` is unique).
+
 ## Notes
 
 - Indexes: `postings(account_id)`, `postings(entry_id)`, `outbox_events(created_at) WHERE
-  published_at IS NULL`, `attempts(session_id)`, `tool_calls(attempt_id)`,
-  `customers(session_id)`, `sessions(created_at)`, `leaderboard(score DESC)`.
+  published_at IS NULL`, `outbox_events(topic, message_key)`, `attempts(session_id)`,
+  `tool_calls(attempt_id)`, `customers(session_id)`, `sessions(created_at)`,
+  `leaderboard(score DESC) WHERE best_level IS NOT NULL`.
 - IP addresses are stored only as HMAC-SHA256 hashes with a secret salt.
 - Retention (not implemented yet): drop `attempts` partitions and expired sessions older
   than 90 days. Rows referencing an attempt must be removed first (ADR-0010), and the

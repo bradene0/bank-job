@@ -13,7 +13,9 @@ the single `t4g.large`.
 ## Decision
 Run one Jaeger v2 container configured as the collector (`infra/compose/jaeger.yaml`):
 OTLP gRPC/HTTP receivers, `memory_limiter` and `batch` processors, bounded in-memory
-storage. Services export OTLP to `jaeger:4317`.
+storage. Services export OTLP to `jaeger:4318` (game-api and the agent both use OTLP over HTTP;
+gRPC on 4317 stays open for tools run outside compose). game-api also reads traces back
+from Jaeger's query API (`/api/v3/traces/{id}`) for `GET /v1/traces/{id}`.
 
 ## Consequences
 - One fewer container to run, size and health-check; the pipeline is still a standard

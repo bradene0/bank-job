@@ -11,7 +11,9 @@ marked otherwise.
 | Concurrency | JUnit + parallel executors | No lost updates or overdrafts under contention |
 | Architecture | ArchUnit | Module boundaries hold (e.g., only the ledger module writes postings) |
 | API contract | Schemathesis against `openapi.yaml` | The API matches its spec and handles unexpected input |
-| Failure injection | Testcontainers (pause/stop Kafka, kill DB connection) | Outbox recovers; no lost or duplicated events; replay fallback triggers |
+| Event contract | JSON Schema (`docs/contracts/events`) in `AttemptEventsIT` | Every event an attempt publishes matches its schema and carries the attempt's trace |
+| Failure injection | Testcontainers (`docker pause` on Kafka mid-transfer, forced re-sends, poison messages); compose (`docker compose stop kafka` mid-game) | Outbox recovers; no lost or duplicated effects (projections match the ledger); poison messages go to the DLQ without blocking their partition; replay fallback triggers |
+| Tracing | `infra/compose/check_trace.py` in CI | One attempt is one connected trace across game-api, the agent and every Kafka consumer, and `GET /v1/traces` returns it |
 | End-to-end | Playwright | A player can complete Level 1 (live stub mode and replay mode) |
 | Accessibility | axe (via Playwright) | No WCAG violations on game screens |
 | LLM evals | `services/evals` | Attack matrix results, guardrail regressions, Penny behavior |
