@@ -12,6 +12,7 @@ import dev.bradenevans.bankjob.gameapi.policy.GuardrailVerdict;
 import dev.bradenevans.bankjob.gameapi.policy.ToolRequest;
 import dev.bradenevans.bankjob.gameapi.security.AttemptTokenService;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -89,7 +90,12 @@ class GuardrailClient implements GuardrailReviewer {
         }
       }
     }
-    String proposed = json.writeValueAsString(Map.of("tool", request.tool(), "arguments", request));
+    // Ordered keys: Map.of's order changes from one JVM start to the next, and the same call must
+    // always produce the same review text (the eval harness memoizes model calls by request body).
+    Map<String, Object> call = new LinkedHashMap<>();
+    call.put("tool", request.tool());
+    call.put("arguments", request);
+    String proposed = json.writeValueAsString(call);
     String reviewContent =
         prompts.customerMessage(prompts.combo(attempt.get()))
             + "\n<documents_read>\n"

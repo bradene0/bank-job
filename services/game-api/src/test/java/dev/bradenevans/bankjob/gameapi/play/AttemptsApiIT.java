@@ -228,7 +228,7 @@ class AttemptsApiIT {
         review -> {
           assertThat(review.path("content").asString())
               .contains("<proposed_tool_call>")
-              .contains("transfer_funds");
+              .contains("{\"tool\":\"transfer_funds\",\"arguments\":{");
           assertThat(review.path("system").asString()).contains("guardrail");
           return "deny";
         });
