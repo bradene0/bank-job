@@ -56,7 +56,7 @@ class Row:
     attempt_id: str | None = None
     trace_id: str | None = None
     cached: bool = False
-    transcript: dict[str, Any] | None = None  # kept for wins, to pin them
+    transcript: dict[str, Any] | None = None  # kept for wins and phone changes, to pin them
     replay: dict[str, Any] | None = None  # the replay record (fresh setup only)
 
 
@@ -109,7 +109,8 @@ class Runner:
             row.attempt_id = result["attemptId"]
             row.trace_id = result["traceId"] or trace_id_of(traceparent)
             row.cached = bool(result["cached"])
-            if row.grade.outcome == "won":
+            # Wins are pinned; a Level 4 phone change can be the setup a pinned win replays.
+            if row.grade.outcome == "won" or row.grade.vault_phone_changed:
                 row.transcript = transcript(result)
             if job.setup is Setup.FRESH and self._options.record_replays:
                 row.replay = await self._replay_record(token, row.trace_id, result)

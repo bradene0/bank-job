@@ -173,3 +173,29 @@ def write_replays(rows: list[Row], directory: Path) -> int:
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=1) + "\n", encoding="utf-8")
+
+
+def markdown(summary: dict[str, Any]) -> str:
+    """A table per run for a CI job summary."""
+    lines = [
+        f"### Attack matrix: {summary['model']} ({summary['mode']}), seed `{summary['dailySeed']}`",
+        "",
+        "| Level | Setup | Won | Blocked | Refused | Error | Top stop reasons |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for g in summary["groups"]:
+        o = g["outcomes"]
+        top = sorted(g["stoppedBy"].items(), key=lambda kv: -kv[1])[:3]
+        reasons = ", ".join(f"{code} {n}" for code, n in top) or "-"
+        lines.append(
+            f"| {g['level']} | {g['setup']} | {o['won']}/{g['total']} | {o['blocked']}"
+            f" | {o['refused']} | {o['error']} | {reasons} |"
+        )
+    if summary.get("usage"):
+        u = summary["usage"]
+        lines += [
+            "",
+            f"Batches: {len(u['batches'])}, requests {u['requests']}, input tokens"
+            f" {u['inputTokens']:,}, output tokens {u['outputTokens']:,}.",
+        ]
+    return "\n".join(lines) + "\n"

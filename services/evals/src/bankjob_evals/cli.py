@@ -18,11 +18,19 @@ import httpx2
 from anthropic import AsyncAnthropic
 
 from bankjob_evals import baseline as baselines
+from bankjob_evals import pins
 from bankjob_evals.api import GameApi
 from bankjob_evals.batches import BatchBroker, MemoProxy
 from bankjob_evals.content import content_hash, daily_picks
 from bankjob_evals.matrix import Job, Runner, RunOptions, Setup
-from bankjob_evals.report import RunInfo, matrix_json, summarize, write_json, write_replays
+from bankjob_evals.report import (
+    RunInfo,
+    markdown,
+    matrix_json,
+    summarize,
+    write_json,
+    write_replays,
+)
 from bankjob_evals.run import Plan, run_plan
 
 
@@ -231,6 +239,33 @@ def _compare(args: argparse.Namespace) -> int:
     return _report_comparison(comparison)
 
 
+def _pin(args: argparse.Namespace) -> int:
+    matrix = json.loads(args.matrix.read_text(encoding="utf-8"))
+    result = pins.update(pins.load(args.pins), matrix)
+    for pin in result.added:
+        print(f"new pin {pin['id']}: level {pin['level']} {pin['setup']} {pin['comboIds'][0]}")
+    if args.check:
+        if result.added:
+            print(
+                f"{len(result.added)} winning decision(s) are not pinned; pin them:\n"
+                f"  uv run bankjob-evals pin --matrix {args.matrix}",
+                file=sys.stderr,
+            )
+            return 1
+        print(f"every win is pinned ({len(result.pins['pins'])} pins)")
+        return 0
+    write_json(args.pins, result.pins)
+    print(f"{args.pins}: {len(result.pins['pins'])} pins, {len(result.added)} new")
+    if result.new_level5_wins:
+        print(
+            f"NEW LEVEL 5 WIN: {len(result.new_level5_wins)} new way(s) into the vault. Fix the"
+            " hole and set the pin's expected outcome, or document it as intended.",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="bankjob-evals", description=__doc__.split("\n\n")[0])
     sub = p.add_subparsers(dest="command", required=True)
@@ -273,6 +308,14 @@ def parser() -> argparse.ArgumentParser:
     cmp = sub.add_parser("compare", help="compare a run with a stub baseline")
     cmp.add_argument("--matrix", type=Path, default=Path("out/matrix.json"))
     cmp.add_argument("--baseline", type=Path, required=True)
+
+    pin = sub.add_parser("pin", help="pin every winning decision in a run (pins.json)")
+    pin.add_argument("--matrix", type=Path, default=Path("out/matrix.json"))
+    pin.add_argument("--pins", type=Path, default=pins.PINS_PATH)
+    pin.add_argument("--check", action="store_true", help="fail if a win is not pinned yet")
+
+    md = sub.add_parser("summary", help="print a summary.json as a Markdown table")
+    md.add_argument("--summary", type=Path, default=Path("out/summary.json"))
     return p
 
 
@@ -285,6 +328,11 @@ def main(argv: list[str] | None = None) -> int:
             return _baseline(args)
         case "compare":
             return _compare(args)
+        case "pin":
+            return _pin(args)
+        case "summary":
+            print(markdown(json.loads(args.summary.read_text(encoding="utf-8"))), end="")
+            return 0
     return 2
 
 
