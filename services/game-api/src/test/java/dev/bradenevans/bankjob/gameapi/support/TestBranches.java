@@ -1,5 +1,7 @@
 package dev.bradenevans.bankjob.gameapi.support;
 
+import dev.bradenevans.bankjob.gameapi.attempt.AttemptRecord;
+import dev.bradenevans.bankjob.gameapi.attempt.AttemptStore;
 import dev.bradenevans.bankjob.gameapi.branch.BranchProvisioner;
 import dev.bradenevans.bankjob.gameapi.ledger.AccountSnapshot;
 import dev.bradenevans.bankjob.gameapi.ledger.LedgerService;
@@ -10,6 +12,8 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Creates a fresh, fully provisioned session for a test. Each test gets its own branch, so tests
@@ -22,16 +26,19 @@ public class TestBranches {
   private final TransactionTemplate transactions;
   private final BranchProvisioner provisioner;
   private final LedgerService ledger;
+  private final AttemptStore attempts;
 
   public TestBranches(
       JdbcClient jdbc,
       TransactionTemplate transactions,
       BranchProvisioner provisioner,
-      LedgerService ledger) {
+      LedgerService ledger,
+      AttemptStore attempts) {
     this.jdbc = jdbc;
     this.transactions = transactions;
     this.provisioner = provisioner;
     this.ledger = ledger;
+    this.attempts = attempts;
   }
 
   /** The seed every test branch uses, so security answers are predictable. */
@@ -54,6 +61,18 @@ public class TestBranches {
           provisioner.provision(sessionId, DAILY_SEED);
           return sessionId;
         });
+  }
+
+  /** An in-flight attempt, as POST /v1/attempts would create it before calling the agent. */
+  public AttemptRecord newAttempt(UUID sessionId, int level, String comboId) {
+    String[] ids = comboId.split("\\.");
+    ObjectNode tiles = JsonNodeFactory.instance.objectNode();
+    tiles
+        .put("persona", ids[0])
+        .put("pretext", ids[1])
+        .put("technique", ids[2])
+        .put("payload", ids[3]);
+    return attempts.create(sessionId, level, comboId, tiles, DAILY_SEED);
   }
 
   /** The session's accounts keyed by number, e.g. "BV-MULE-01". */
