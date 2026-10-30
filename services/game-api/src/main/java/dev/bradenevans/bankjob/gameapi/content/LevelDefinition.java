@@ -1,4 +1,35 @@
 package dev.bradenevans.bankjob.gameapi.content;
 
-/** One level from content/levels.yaml. Controls are added when the policy engine lands. */
-public record LevelDefinition(int id, String name, int nerve, int multiplier) {}
+/**
+ * One level from content/levels.yaml. The controls are enforced by the policy engine, never by the
+ * model.
+ */
+public record LevelDefinition(
+    int id,
+    String name,
+    int nerve,
+    int multiplier,
+    Controls controls,
+    String intendedGap,
+    String lesson) {
+
+  /** Every switch defaults to off; a level only turns on what it lists. */
+  public record Controls(
+      boolean systemPromptOnly,
+      Long transferLimitCents,
+      boolean requireVerifiedOwner,
+      boolean requireOutOfBandConfirmation,
+      boolean protectContactChanges,
+      boolean anomalyRules,
+      boolean guardrailAgentReview) {
+
+    public static final Controls NONE =
+        new Controls(false, null, false, false, false, false, false);
+  }
+
+  public LevelDefinition {
+    if (controls == null) {
+      controls = Controls.NONE;
+    }
+  }
+}

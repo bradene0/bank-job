@@ -113,13 +113,14 @@
       <resource>
         <directory>src/main/resources</directory>
       </resource>
-      <!-- Game content (tiles, levels) is the source of truth at the repo root; ship it on
+      <!-- Game content (tiles, levels, prompts) is the source of truth at the repo root; ship it on
            the classpath so the JVM jar and the native image carry the same files. -->
       <resource>
         <directory>${project.basedir}/../../content</directory>
         <targetPath>content</targetPath>
         <includes>
           <include>*.yaml</include>
+          <include>prompts/*.md</include>
         </includes>
       </resource>
     </resources>
