@@ -90,6 +90,34 @@ jobs:
       - name: No prompt fragment in the bundle (ADR-0003)
         run: pnpm check:bundle
 
+  infra:
+    # Terraform state never leaves the owner's machine (ADR-0017), so CI checks formatting,
+    # validity and lint without credentials; plan and apply run locally.
+    name: Infrastructure (Terraform, k8s manifests)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: terraform fmt and validate
+        working-directory: infra/terraform
+        run: |
+          tf() { docker run --rm -v "$PWD:/w" -w /w hashicorp/terraform:1.16.7 "$@"; }
+          tf fmt -check -diff
+          tf init -backend=false -input=false -lockfile=readonly
+          tf validate
+      - name: tflint
+        working-directory: infra/terraform
+        run: |
+          docker run --rm -v "$PWD:/data" -w /data ghcr.io/terraform-linters/tflint:v0.65.0 --init
+          docker run --rm -v "$PWD:/data" -w /data ghcr.io/terraform-linters/tflint:v0.65.0
+      - name: Render and validate the k8s manifests
+        run: |
+          kubectl kustomize --load-restrictor LoadRestrictionsNone infra/k8s \
+            | docker run --rm -i ghcr.io/yannh/kubeconform:v0.8.0 -strict -summary \
+                -skip HelmChartConfig -kubernetes-version 1.36.0 -
+      - name: shellcheck
+        run: docker run --rm -v "$PWD:/m" -w /m/infra/k8s koalaman/shellcheck:v0.11.0 -x ./*.sh
+
   native:
     # Proves ADR-0004 holds on every change: the game-api still compiles to a native
     # image on both production (arm64) and amd64. Images are built, never pushed.
