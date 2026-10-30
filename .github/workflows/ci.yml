@@ -327,9 +327,11 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: eval-matrix-stub
+          # The release deploys these replay files with the game (release.yml).
           path: |
             services/evals/out/matrix.json
             services/evals/out/summary.json
+            services/evals/out/replay/
           if-no-files-found: ignore
       - name: Logs on failure
         if: failure()

@@ -13,6 +13,11 @@ with policy decisions, and the attempt's trace), leaderboard, live/waking/replay
   and starts each attempt's trace with a `traceparent` (ADR-0015).
 - **Replay mode:** `/replay/{level}/{comboId}.json` (`docs/contracts/replay.schema.json`),
   written by the eval harness. While the API is unreachable the game plays these.
+- **Production:** Workers static assets at `bankjob.bradenevans.dev` (`wrangler.jsonc`,
+  headers and CSP in `public/_headers`). `scripts/deploy-worker.sh <replay dir> [summary.json]`
+  builds against `https://bankjob-live.bradenevans.dev`, adds the eval matrix's replay files
+  under `/replay/` and deploys. The release workflow runs it after the owner approves the
+  `production` environment; the first deploy (which creates the Worker) was run by hand.
 
 ```
 pnpm install --frozen-lockfile    # Node 26 (see .nvmrc), pnpm 10

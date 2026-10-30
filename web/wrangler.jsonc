@@ -1,0 +1,18 @@
+// The game UI and the replay files, served as Workers static assets at bankjob.bradenevans.dev
+// (ADR-0017). Assets only: no Worker script runs. The first deploy creates the Worker and its
+// custom domain (scripts/deploy-worker.sh, run by the owner); CI deploys new versions after that.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "bankjob-web",
+  "account_id": "8d38c5eb5e8e2e751921876904264f9f",
+  "compatibility_date": "2026-10-30",
+  "assets": {
+    "directory": "./dist",
+    // A missing replay file must be a 404 (the game then says the combo has no recording),
+    // not index.html, and the game has no client-side routes.
+    "not_found_handling": "none"
+  },
+  "routes": [{ "pattern": "bankjob.bradenevans.dev", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false
+}
