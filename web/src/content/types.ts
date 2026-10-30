@@ -27,7 +27,24 @@ export interface LevelView {
   points: number;
   lesson: string;
   /** The controls this level enforces, in plain words. The intended gap is never shipped. */
-  controls: string[];
+  controls: Control[];
+}
+
+/** The control keys in content/levels.yaml. Each one also puts a prop in Penny's window. */
+export const CONTROL_KEYS = [
+  "system_prompt_only",
+  "transfer_limit_cents",
+  "require_verified_owner",
+  "require_out_of_band_confirmation",
+  "protect_contact_changes",
+  "anomaly_rules",
+  "guardrail_agent_review",
+] as const;
+export type ControlKey = (typeof CONTROL_KEYS)[number];
+
+export interface Control {
+  key: ControlKey;
+  text: string;
 }
 
 export interface GameContent {

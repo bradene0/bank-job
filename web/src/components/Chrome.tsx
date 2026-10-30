@@ -120,7 +120,7 @@ export function Briefing({ content, levelId }: { content: GameContent; levelId: 
       <h3>What stands in your way</h3>
       <ul>
         {level.controls.map((control) => (
-          <li key={control}>{control}</li>
+          <li key={control.key}>{control.text}</li>
         ))}
       </ul>
     </section>

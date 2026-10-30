@@ -4,6 +4,7 @@ import { parse } from "yaml";
 import type { Plugin } from "vite";
 import {
   SLOT_KEYS,
+  type ControlKey,
   type GameContent,
   type LevelView,
   type SlotKey,
@@ -21,7 +22,7 @@ const TILE_KEYS = new Set(["id", "label", "blurb", "fragment", "amount_cents", "
 const LEVEL_KEYS = new Set(["id", "name", "nerve", "points", "controls", "intended_gap", "lesson"]);
 
 /** Plain-language names for level controls; an unknown control fails the build. */
-const CONTROL_TEXT: Record<string, (value: unknown) => string> = {
+const CONTROL_TEXT: Record<ControlKey, (value: unknown) => string> = {
   system_prompt_only: () => "Penny's instructions (a system prompt) and nothing else",
   transfer_limit_cents: (cents) =>
     `Teller limit: $${(Number(cents) / 100).toLocaleString("en-US")} per call, enforced in code`,
@@ -95,9 +96,9 @@ export function loadContent(contentDir: string): GameContent {
       lesson: text(level.lesson, `${where}.lesson`),
       // intended_gap is deliberately left out: it is the level's answer.
       controls: Object.entries(controls).map(([name, value]) => {
-        const describe = CONTROL_TEXT[name];
-        if (!describe) fail(`${where}.controls.${name} is not a known control`);
-        return describe(value);
+        if (!Object.hasOwn(CONTROL_TEXT, name)) fail(`${where}.controls.${name} is not a known control`);
+        const key = name as ControlKey;
+        return { key, text: CONTROL_TEXT[key](value) };
       }),
     };
   });

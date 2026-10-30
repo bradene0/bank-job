@@ -31,9 +31,20 @@ describe("loadContent", () => {
   });
 
   it("describes each level's controls in plain words", () => {
-    expect(content.levels[0]?.controls).toEqual(["Penny's instructions (a system prompt) and nothing else"]);
-    expect(content.levels[1]?.controls).toEqual(["Teller limit: $1,000 per call, enforced in code"]);
-    expect(content.levels[4]?.controls).toHaveLength(6);
+    expect(content.levels[0]?.controls).toEqual([
+      { key: "system_prompt_only", text: "Penny's instructions (a system prompt) and nothing else" },
+    ]);
+    expect(content.levels[1]?.controls).toEqual([
+      { key: "transfer_limit_cents", text: "Teller limit: $1,000 per call, enforced in code" },
+    ]);
+    expect(content.levels[4]?.controls.map((c) => c.key)).toEqual([
+      "transfer_limit_cents",
+      "require_verified_owner",
+      "require_out_of_band_confirmation",
+      "protect_contact_changes",
+      "anomaly_rules",
+      "guardrail_agent_review",
+    ]);
   });
 
   it("fails the build on a control it cannot describe", () => {
