@@ -23,8 +23,11 @@ extensions:
     backends:
       memstore:
         memory:
-          # Short-lived local traces; bounded so the container cannot grow without limit.
-          max_traces: 10000
+          # Short-lived local traces, bounded to what fits under the memory limiter below: an
+          # attempt's trace is about 100 spans, and with 10000 of them the limiter started
+          # refusing new spans during an eval-matrix run. The oldest traces are evicted first,
+          # and the UI and the harness read a trace within seconds of the attempt.
+          max_traces: 1500
   healthcheckv2:
     use_v2: true
     http:
