@@ -13,6 +13,7 @@ from mcp.types import Tool
 
 from bankjob_agent.bank import Bank, ToolResult
 from bankjob_agent.briefs import AttemptBrief
+from bankjob_agent.telemetry import traced_model_call
 
 VAULT = "BV-VAULT-01"
 MULE = "BV-MULE-01"
@@ -177,8 +178,10 @@ class ClaudeTeller:
         # Each round either ends the run or spends at least one tool call, so the tool budget
         # bounds the loop.
         while True:
-            response = await self._client.messages.create(
+            response = await traced_model_call(
+                self._client,
                 model=self._model,
+                attributes={"gen_ai.agent.name": "Penny"},
                 max_tokens=self._max_tokens,
                 system=brief.system,
                 messages=messages,

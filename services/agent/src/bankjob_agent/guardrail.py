@@ -13,6 +13,7 @@ from anthropic.types import TextBlock
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from bankjob_agent.briefs import ReviewBrief, Verdict
+from bankjob_agent.telemetry import traced_model_call
 
 UNDECIDED = "guardrail could not decide"
 
@@ -73,8 +74,10 @@ class ClaudeGuardrail:
         self._model = model
 
     async def review(self, brief: ReviewBrief) -> ReviewResult:
-        response = await self._client.messages.create(
+        response = await traced_model_call(
+            self._client,
             model=self._model,
+            attributes={"gen_ai.agent.name": "guardrail"},
             max_tokens=256,
             system=brief.system,
             messages=[{"role": "user", "content": brief.content}],

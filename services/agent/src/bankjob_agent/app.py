@@ -10,11 +10,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from bankjob_agent import bank
+from bankjob_agent import bank, telemetry
 from bankjob_agent.bank import Bank, BankUnavailable, TokenRejected
 from bankjob_agent.guardrail import ClaudeGuardrail, Guardrail, StubGuardrail
 from bankjob_agent.penny import ClaudeTeller, StubTeller, Teller
 from bankjob_agent.settings import LlmMode, Settings
+from bankjob_agent.telemetry import tracer
 
 log = logging.getLogger("bankjob_agent")
 
@@ -75,6 +76,7 @@ def create_app(
     connect_bank: BankConnector | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
+    provider = telemetry.configure(settings.otlp_endpoint)
     llm: anthropic.AsyncAnthropic | None = None
     if settings.llm_mode is LlmMode.LIVE and (teller is None or guardrail is None):
         # The key comes from ANTHROPIC_API_KEY; Settings already checked it is set.
@@ -99,8 +101,11 @@ def create_app(
         yield
         if llm is not None:
             await llm.close()
+        if provider is not None:
+            provider.shutdown()  # flush spans still in the batch
 
-    app = FastAPI(title="Bank Job agent", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="Bank Job agent", version="0.3.0", lifespan=lifespan)
+    telemetry.instrument(app, provider)
 
     @app.exception_handler(TokenRejected)
     async def token_rejected(_: object, __: Exception) -> JSONResponse:
@@ -127,9 +132,15 @@ def create_app(
 
     @app.post("/v1/runs")
     async def run(request: RunRequest) -> RunResponse:
-        async with connect_bank(request.attempt_token) as session:
-            brief = await session.brief()
-            result = await teller.run(session, brief)
+        with tracer.start_as_current_span(
+            "invoke_agent Penny",
+            attributes={"gen_ai.operation.name": "invoke_agent", "gen_ai.agent.name": "Penny"},
+        ) as span:
+            async with connect_bank(request.attempt_token) as session:
+                brief = await session.brief()
+                result = await teller.run(session, brief)
+            span.set_attribute("bankjob.stop_reason", result.stop_reason)
+            span.set_attribute("bankjob.tool_calls", result.tool_calls)
         return RunResponse(
             reply=result.reply,
             stop_reason=result.stop_reason,
@@ -140,9 +151,14 @@ def create_app(
 
     @app.post("/v1/reviews")
     async def review(request: ReviewRequest) -> ReviewResponse:
-        async with connect_bank(request.attempt_token) as session:
-            brief = await session.review(str(request.review_id))
-        result = await guardrail.review(brief)
+        with tracer.start_as_current_span(
+            "invoke_agent guardrail",
+            attributes={"gen_ai.operation.name": "invoke_agent", "gen_ai.agent.name": "guardrail"},
+        ) as span:
+            async with connect_bank(request.attempt_token) as session:
+                brief = await session.review(str(request.review_id))
+            result = await guardrail.review(brief)
+            span.set_attribute("bankjob.verdict", result.verdict)
         return ReviewResponse(
             verdict=result.verdict,
             reason=result.reason,

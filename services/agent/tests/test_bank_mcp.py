@@ -11,9 +11,11 @@ from typing import Any
 import pytest
 import uvicorn
 from mcp.server.mcpserver import MCPServer
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from bankjob_agent.bank import BankUnavailable, TokenRejected, connect
+from bankjob_agent.telemetry import tracer
 from tests.fakes import make_brief, make_review
 
 pytestmark = pytest.mark.anyio
@@ -52,11 +54,14 @@ class RequireBearer:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
         self.seen: list[str] = []
+        self.traceparents: list[str] = []
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
-            auth = dict(scope["headers"]).get(b"authorization", b"").decode()
+            headers = dict(scope["headers"])
+            auth = headers.get(b"authorization", b"").decode()
             self.seen.append(auth)
+            self.traceparents.append(headers.get(b"traceparent", b"").decode())
             if auth != f"Bearer {TOKEN}":
                 await send({"type": "http.response.start", "status": 401, "headers": []})
                 await send({"type": "http.response.body", "body": b""})
@@ -140,3 +145,23 @@ async def test_a_brief_that_breaks_the_contract_is_bank_unavailable(
     with pytest.raises(BankUnavailable, match="contract"):
         async with connect(url, TOKEN) as bank:
             await bank.review(BROKEN_REVIEW_ID)
+
+
+async def test_each_mcp_request_carries_the_span_that_sent_it(
+    mcp_server: tuple[str, Any], spans: InMemorySpanExporter
+) -> None:
+    url, app = mcp_server
+    app.traceparents.clear()
+    with tracer.start_as_current_span("invoke_agent Penny") as run:
+        async with connect(url, TOKEN) as bank:
+            await bank.call("get_balance", {"account_number": "BV-VAULT-01"})
+
+    send = next(
+        s for s in spans.get_finished_spans() if s.name == "MCP send tools/call get_balance"
+    )
+    assert send.context is not None and send.parent is not None
+    assert send.parent.span_id == run.get_span_context().span_id
+    # game-api's spans for this call nest under the SDK's client span. (Flags vary: OTel sets the
+    # W3C "random trace id" bit as well as "sampled".)
+    expected = f"00-{send.context.trace_id:032x}-{send.context.span_id:016x}-"
+    assert any(header.startswith(expected) for header in app.traceparents)

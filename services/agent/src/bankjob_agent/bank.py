@@ -18,6 +18,7 @@ from mcp.types import TextContent, TextResourceContents, Tool
 from pydantic import ValidationError
 
 from bankjob_agent.briefs import AttemptBrief, ReviewBrief
+from bankjob_agent.telemetry import inject_traceparent
 
 BRIEF_URI = "bankjob://attempt/brief"
 
@@ -135,7 +136,8 @@ async def connect(
     http = httpx2.AsyncClient(
         headers={"Authorization": f"Bearer {token}"},
         timeout=httpx2.Timeout(timeout_seconds),
-        event_hooks={"response": [record_auth_failure]},
+        # Each MCP request carries the current span (the SDK's `MCP send ...` client span).
+        event_hooks={"request": [inject_traceparent], "response": [record_auth_failure]},
         transport=transport,
     )
     client = Client(

@@ -21,6 +21,8 @@ class Settings:
     llm_timeout_seconds: float = 20.0
     # Only for tests: point the SDK at a local fake of the Messages API.
     anthropic_base_url: str | None = None
+    # OTLP/HTTP collector base URL (Jaeger, ADR-0007); unset means no span export.
+    otlp_endpoint: str | None = None
 
     @property
     def model_label(self) -> str:
@@ -48,6 +50,7 @@ class Settings:
             max_tool_calls=_positive_int("PENNY_MAX_TOOL_CALLS", 8),
             llm_timeout_seconds=_positive_float("LLM_TIMEOUT_SECONDS", 20.0),
             anthropic_base_url=os.environ.get("ANTHROPIC_BASE_URL", "").strip() or None,
+            otlp_endpoint=os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip() or None,
         )
 
 
