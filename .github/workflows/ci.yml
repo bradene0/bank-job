@@ -168,10 +168,13 @@ jobs:
     # every service healthy.
     name: Compose smoke test
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
-      # Every Playwright test is a new player (a new guest session) from the same address.
-      SESSIONS_MAX_PER_IP_PER_HOUR: "1000"
+      # Every Playwright test and every eval-matrix combo is a new player (a new guest session)
+      # from the same address.
+      SESSIONS_MAX_PER_IP_PER_HOUR: "20000"
+      # The eval seed: the stub matrix is compared with a baseline recorded on it.
+      DAILY_SEED_OVERRIDE: evals
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: cp .env.example .env
@@ -265,6 +268,32 @@ jobs:
             --exclude-tag planned \
             --max-examples 50 \
             --generation-deterministic
+      - name: Attack matrix (stub; every combo on every level, compared with the baseline and the pins)
+        working-directory: services/evals
+        run: |
+          uv sync --locked
+          uv run bankjob-evals run --daily-seed evals --baseline baselines/stub-evals.json
+          uv run bankjob-evals pin --check
+      - name: Live matrix path (Message Batches via the memo proxy; a fake batches API, no key, no cost)
+        working-directory: services/evals
+        run: |
+          uv run python -m tests.fake_batches --port 8999 &
+          docker compose -f ../../docker-compose.yml -f ../../infra/compose/evals-batches.yml \
+            up -d --wait --wait-timeout 180 game-api agent
+          # Linux containers reach the host on its bridge address, so the proxy listens there too.
+          ANTHROPIC_API_KEY=fake-key uv run bankjob-evals run --daily-seed evals --batches \
+            --anthropic-base-url http://127.0.0.1:8999 --proxy-bind 0.0.0.0 --poll-seconds 0.2 \
+            --levels 1,2,5 --sample 0.05 --no-replays --out out/batches
+          jq -e '.usage.succeeded > 0 and all(.results[]; .outcome != "error")' out/batches/matrix.json
+      - name: Upload matrix results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: eval-matrix-stub
+          path: |
+            services/evals/out/matrix.json
+            services/evals/out/summary.json
+          if-no-files-found: ignore
       - name: Logs on failure
         if: failure()
         run: docker compose logs --no-color
