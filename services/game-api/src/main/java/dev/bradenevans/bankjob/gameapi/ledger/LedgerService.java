@@ -101,14 +101,19 @@ public class LedgerService {
    * commit and the whole transaction is retried with fresh balances. A concurrent duplicate
    * idempotency key surfaces as a unique-key violation and is retried too; the retry finds the
    * committed key and replays its result.
+   *
+   * <p>Backoff: 5 ms doubling to at most 250 ms, randomized (Spring scales the jitter with the
+   * interval), for up to 40 retries. The budget is sized for the worst case in LedgerConcurrencyIT
+   * (16 threads on 4 accounts, on a 2-vCPU CI runner); in the game each session has its own branch,
+   * so real contention on one balance is rare.
    */
   @Retryable(
       includes = {ConcurrencyFailureException.class, DuplicateKeyException.class},
-      maxRetries = 25,
+      maxRetries = 40,
       delay = 5,
       jitter = 5,
       multiplier = 2,
-      maxDelay = 100)
+      maxDelay = 250)
   public TransferResult transfer(TransferCommand command) {
     Assert.state(
         !TransactionSynchronizationManager.isActualTransactionActive(),
