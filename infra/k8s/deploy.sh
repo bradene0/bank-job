@@ -13,7 +13,7 @@ render="$(kubectl kustomize --load-restrictor LoadRestrictionsNone .)"
 for image in game-api agent; do
   digest="$(docker buildx imagetools inspect "$registry/$image:sha-$sha" --format '{{.Manifest.Digest}}')"
   echo "$image: sha-${sha:0:12} -> $digest"
-  render="${render//"$registry/$image:main"/"$registry/$image@$digest"}"
+  render="$(printf '%s\n' "$render" | sed "s|$registry/$image:main|$registry/$image@$digest|g")"
 done
 
 printf '%s\n' "$render" | kc apply -f -
