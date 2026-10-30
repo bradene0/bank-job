@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bankjob.bradenevans.dev/contracts/events/PolicyDecided.schema.json",
+  "title": "PolicyDecided",
+  "description": "The policy engine's decision on that tool call. Topic `bankjob.tool-calls`, key `attempt_id`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "occurred_at",
+    "attempt_id",
+    "ordinal",
+    "tool",
+    "decision",
+    "reason_code",
+    "reason",
+    "review"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "event_type": {
+      "const": "PolicyDecided"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the change committed (the outbox row's transaction time)"
+    },
+    "attempt_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "ordinal": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "tool": {
+      "type": "string",
+      "enum": [
+        "lookup_account",
+        "get_balance",
+        "verify_identity",
+        "read_document",
+        "update_contact_info",
+        "transfer_funds",
+        "flag_for_review"
+      ]
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "allow",
+        "deny"
+      ]
+    },
+    "reason_code": {
+      "type": "string",
+      "pattern": "^[a-z_]+$",
+      "description": "Stable code, e.g. teller_limit (docs/security-and-levels.md)"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "review": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Level 5 guardrail verdict, when one was asked"
+    }
+  }
+}

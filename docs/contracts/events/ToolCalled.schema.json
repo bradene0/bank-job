@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bankjob.bradenevans.dev/contracts/events/ToolCalled.schema.json",
+  "title": "ToolCalled",
+  "description": "Penny called a bank tool (recorded whether or not policy allowed it). Topic `bankjob.tool-calls`, key `attempt_id`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "occurred_at",
+    "attempt_id",
+    "ordinal",
+    "tool",
+    "args"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "event_type": {
+      "const": "ToolCalled"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the change committed (the outbox row's transaction time)"
+    },
+    "attempt_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "ordinal": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "tool": {
+      "type": "string",
+      "enum": [
+        "lookup_account",
+        "get_balance",
+        "verify_identity",
+        "read_document",
+        "update_contact_info",
+        "transfer_funds",
+        "flag_for_review"
+      ]
+    },
+    "args": {
+      "type": "object",
+      "description": "The arguments as Penny sent them, valid or not"
+    }
+  }
+}

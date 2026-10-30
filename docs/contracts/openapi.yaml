@@ -14,6 +14,7 @@ tags:
   - name: accounts
   - name: attempts
   - name: traces
+  - name: leaderboard
   - name: planned
     description: Not implemented yet; excluded from contract tests.
 
@@ -189,8 +190,9 @@ paths:
       summary: Simplified trace of one of the caller's attempts, for the "Under the hood" panel
       description: >
         Read back from Jaeger and reduced to allowlisted attributes. A trace id the caller's
-        session did not produce is a 404, the same as one that does not exist. Spans arrive
-        within a second or two of the attempt; poll until they do.
+        session did not produce is a 404, the same as one that does not exist. The trace fills
+        in for a moment after the attempt returns (the Kafka consumers run after it); poll
+        until `complete` is true.
       security: [{ guestJwt: [] }]
       parameters:
         - name: traceId
@@ -220,11 +222,26 @@ paths:
 
   /v1/leaderboard:
     get:
-      tags: [planned]
-      summary: Top scores (Kafka projection)
+      tags: [leaderboard]
+      summary: Top crews (projection fed by AttemptResolved events)
+      description: >
+        Score is dollars stolen times the level multiplier, minus one point per attempt.
+        Only crews with at least one win are ranked. Entries show an alias, never a session id.
       security: []
       responses:
-        "200": { description: Leaderboard }
+        "200":
+          description: Up to 20 entries, best first
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [entries]
+                properties:
+                  entries:
+                    type: array
+                    maxItems: 20
+                    items: { $ref: "#/components/schemas/LeaderboardEntry" }
 
 components:
   securitySchemes:
@@ -310,7 +327,6 @@ components:
           type: [string, "null"]
           pattern: "^[0-9a-f]{32}$"
 
-
     ToolCall:
       type: object
       additionalProperties: false
@@ -332,9 +348,12 @@ components:
     Trace:
       type: object
       additionalProperties: false
-      required: [traceId, spans]
+      required: [traceId, complete, spans]
       properties:
         traceId: { type: string, pattern: "^[0-9a-f]{32}$" }
+        complete:
+          type: boolean
+          description: True once the attempt's last event (AttemptResolved) has been consumed
         spans:
           type: array
           items: { $ref: "#/components/schemas/Span" }
@@ -360,6 +379,17 @@ components:
             HTTP method/route/status, db.system/db.operation); never SQL or prompts.
           type: object
           additionalProperties: { type: [string, number, boolean] }
+
+    LeaderboardEntry:
+      type: object
+      additionalProperties: false
+      required: [rank, alias, score, bestLevel, stolenCents]
+      properties:
+        rank: { type: integer, minimum: 1 }
+        alias: { type: string, pattern: "^Crew-[0-9A-F]{6}$" }
+        score: { type: integer, format: int64 }
+        bestLevel: { type: integer, minimum: 1, maximum: 5, description: Highest level with a win }
+        stolenCents: { type: integer, format: int64, minimum: 0 }
 
     Problem:
       description: RFC 9457 problem details

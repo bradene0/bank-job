@@ -16,7 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
     importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureTest {
 
-  /** The ledger is the core: it knows nothing about sessions, HTTP or game content. */
+  /**
+   * The ledger is the core: it knows nothing about sessions, HTTP or game content. It may append to
+   * the outbox (TransferPosted commits with the postings).
+   */
   @ArchTest
   static final ArchRule ledgerDependsOnNoOtherModule =
       noClasses()
@@ -26,9 +29,12 @@ class ArchitectureTest {
           .dependOnClassesThat()
           .resideInAnyPackage(
               "..gameapi.accounts..",
+              "..gameapi.anomaly..",
               "..gameapi.attempt..",
+              "..gameapi.audit..",
               "..gameapi.branch..",
               "..gameapi.content..",
+              "..gameapi.leaderboard..",
               "..gameapi.maintenance..",
               "..gameapi.mcp..",
               "..gameapi.play..",
@@ -68,6 +74,34 @@ class ArchitectureTest {
               dev.bradenevans.bankjob.gameapi.ledger.LedgerService.class,
               "post",
               dev.bradenevans.bankjob.gameapi.ledger.PostingRequest.class);
+
+  /**
+   * Events reach Kafka only through the transactional outbox (ADR-0002): no other code may send to
+   * the broker, so no change can publish an event its transaction did not commit. (The DLQ
+   * recoverer in events.KafkaConfig re-sends records consumers gave up on.)
+   */
+  @ArchTest
+  static final ArchRule onlyTheOutboxProducesEvents =
+      noClasses()
+          .that()
+          .resideOutsideOfPackages("..gameapi.outbox..", "..gameapi.events..")
+          .should()
+          .dependOnClassesThat()
+          .areAssignableTo(org.springframework.kafka.core.KafkaOperations.class)
+          .orShould()
+          .dependOnClassesThat()
+          .areAssignableTo(org.apache.kafka.clients.producer.Producer.class);
+
+  /** Consumers keep projections; they never touch the ledger, the tools or the play loop. */
+  @ArchTest
+  static final ArchRule consumersOnlyKeepProjections =
+      noClasses()
+          .that()
+          .resideInAnyPackage("..gameapi.anomaly..", "..gameapi.leaderboard..", "..gameapi.audit..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAnyPackage(
+              "..gameapi.ledger..", "..gameapi.tools..", "..gameapi.play..", "..gameapi.mcp..");
 
   @ArchTest
   static final ArchRule modulesHaveNoCycles =

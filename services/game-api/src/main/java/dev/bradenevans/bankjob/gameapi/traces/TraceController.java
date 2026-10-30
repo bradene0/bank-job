@@ -28,7 +28,8 @@ class TraceController {
 
   private static final Pattern TRACE_ID = Pattern.compile("[0-9a-f]{32}");
 
-  record TraceView(String traceId, List<SpanView> spans) {}
+  /** {@code complete} turns true once the consumers' spans have arrived (the UI stops polling). */
+  record TraceView(String traceId, boolean complete, List<SpanView> spans) {}
 
   private final AttemptStore attempts;
   private final TraceStore traces;
@@ -44,7 +45,20 @@ class TraceController {
         || !attempts.sessionOwnsTrace(UUID.fromString(token.getSubject()), traceId)) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No such trace for this session.");
     }
-    return new TraceView(traceId, traces.spans(traceId));
+    List<SpanView> spans = traces.spans(traceId);
+    return new TraceView(traceId, complete(spans), spans);
+  }
+
+  /**
+   * An attempt's trace ends with the leaderboard consuming its AttemptResolved event, the last
+   * event the attempt produces.
+   */
+  static boolean complete(List<SpanView> spans) {
+    return spans.stream()
+        .anyMatch(
+            s ->
+                "consumer".equals(s.kind())
+                    && "bankjob.outcomes".equals(s.attributes().get("messaging.source.name")));
   }
 
   @ExceptionHandler

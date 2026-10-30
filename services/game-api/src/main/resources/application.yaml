@@ -22,6 +22,29 @@ spring:
         # Update rows in primary-key order so concurrent transfers lock balances in the
         # same order and cannot deadlock each other.
         order_updates: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      # acks=all and idempotence are the client defaults; spelled out because the outbox relies
+      # on them (no duplicates from producer retries, per-partition order kept).
+      acks: all
+      properties:
+        enable.idempotence: true
+        # Fail a send within seconds while the broker is down; the row stays in the outbox.
+        max.block.ms: 5000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
+    admin:
+      # Never block startup on the broker (it boots alongside game-api after a wake); the
+      # outbox relay creates the topics before its first send instead.
+      auto-create: false
+    consumer:
+      # A new consumer group (a projection being built) starts from the oldest event.
+      auto-offset-reset: earliest
+    template:
+      observation-enabled: true  # producer spans, and traceparent in the record headers
+    listener:
+      observation-enabled: true  # consumer spans continue the producer's trace
   mvc:
     problemdetails:
       enabled: true
@@ -52,6 +75,14 @@ bankjob:
   game:
     daily-seed-override: ${DAILY_SEED_OVERRIDE:}
     max-tool-calls: ${PENNY_MAX_TOOL_CALLS:8}
+  kafka:
+    partitions: 3
+    consumer-retries: 3
+  outbox:
+    batch-size: 100
+    poll-interval: 1s
+    send-timeout: 10s
+    max-backoff: 15s
   traces:
     query-url: ${JAEGER_QUERY_URL:http://localhost:16686}
     timeout: 3s

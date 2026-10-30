@@ -1,9 +1,11 @@
 package dev.bradenevans.bankjob.gameapi.ledger;
 
+import dev.bradenevans.bankjob.gameapi.events.EventType;
 import dev.bradenevans.bankjob.gameapi.ledger.LedgerExceptions.CrossSessionTransferException;
 import dev.bradenevans.bankjob.gameapi.ledger.LedgerExceptions.IdempotencyConflictException;
 import dev.bradenevans.bankjob.gameapi.ledger.LedgerExceptions.InsufficientFundsException;
 import dev.bradenevans.bankjob.gameapi.ledger.LedgerExceptions.UnknownAccountException;
+import dev.bradenevans.bankjob.gameapi.outbox.Outbox;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +25,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /** The only way to write the ledger. */
 @Service
@@ -37,6 +40,7 @@ public class LedgerService {
   private final EntityManager entityManager;
   private final TransactionTemplate transactions;
   private final JsonMapper json;
+  private final Outbox outbox;
 
   LedgerService(
       AccountRepository accounts,
@@ -44,13 +48,15 @@ public class LedgerService {
       IdempotencyKeyRepository idempotencyKeys,
       EntityManager entityManager,
       TransactionTemplate transactions,
-      JsonMapper json) {
+      JsonMapper json,
+      Outbox outbox) {
     this.accounts = accounts;
     this.balances = balances;
     this.idempotencyKeys = idempotencyKeys;
     this.entityManager = entityManager;
     this.transactions = transactions;
     this.json = json;
+    this.outbox = outbox;
   }
 
   /** Opens an account with a zero balance. Money only arrives through journal entries. */
@@ -88,7 +94,8 @@ public class LedgerService {
   }
 
   /**
-   * Moves money between two accounts of the same session in its own transaction.
+   * Moves money between two accounts of the same session in its own transaction. A posted transfer
+   * also writes its TransferPosted event to the outbox, in the same transaction.
    *
    * <p>Concurrency: if another transaction updated either balance first, the version check fails at
    * commit and the whole transaction is retried with fresh balances. A concurrent duplicate
@@ -162,6 +169,7 @@ public class LedgerService {
                       new Leg(from.id(), -command.amountCents()),
                       new Leg(to.id(), command.amountCents()))));
       result = TransferResult.posted(entryId, fromBalance.balanceCents(), toBalance.balanceCents());
+      transferPosted(command, entryId, from, to);
     }
 
     if (key != null) {
@@ -170,6 +178,21 @@ public class LedgerService {
           new IdempotencyRecord(key, requestHash, json.writeValueAsString(result)));
     }
     return result;
+  }
+
+  /** Keyed by the destination account: its credits stay in order for the anomaly scorer. */
+  private void transferPosted(TransferCommand command, UUID entryId, Account from, Account to) {
+    ObjectNode event = json.createObjectNode();
+    event.put("entry_id", entryId.toString());
+    event.put("session_id", command.sessionId().toString());
+    event.put("attempt_id", command.attempt() == null ? null : command.attempt().id().toString());
+    event.put("from_account_id", from.id().toString());
+    event.put("from_account", from.number());
+    event.put("to_account_id", to.id().toString());
+    event.put("to_account", to.number());
+    event.put("amount_cents", command.amountCents());
+    String account = to.id().toString();
+    outbox.append(EventType.TRANSFER_POSTED, "account", account, account, event);
   }
 
   @Transactional(readOnly = true)

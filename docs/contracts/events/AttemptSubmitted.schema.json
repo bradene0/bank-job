@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bankjob.bradenevans.dev/contracts/events/AttemptSubmitted.schema.json",
+  "title": "AttemptSubmitted",
+  "description": "A player submitted an attempt (tile ids only). Topic `bankjob.attempts`, key `session_id`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "occurred_at",
+    "attempt_id",
+    "session_id",
+    "level",
+    "combo_id",
+    "tiles",
+    "daily_seed"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "event_type": {
+      "const": "AttemptSubmitted"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the change committed (the outbox row's transaction time)"
+    },
+    "attempt_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "combo_id": {
+      "type": "string",
+      "pattern": "^p[1-6]\\.x[1-6]\\.t[1-6]\\.y[1-4]$"
+    },
+    "tiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "persona",
+        "pretext",
+        "technique",
+        "payload"
+      ],
+      "properties": {
+        "persona": {
+          "type": "string",
+          "pattern": "^p[1-6]$"
+        },
+        "pretext": {
+          "type": "string",
+          "pattern": "^x[1-6]$"
+        },
+        "technique": {
+          "type": "string",
+          "pattern": "^t[1-6]$"
+        },
+        "payload": {
+          "type": "string",
+          "pattern": "^y[1-4]$"
+        }
+      }
+    },
+    "daily_seed": {
+      "type": "string"
+    }
+  }
+}

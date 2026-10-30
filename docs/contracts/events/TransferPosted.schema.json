@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bankjob.bradenevans.dev/contracts/events/TransferPosted.schema.json",
+  "title": "TransferPosted",
+  "description": "A transfer posted to the ledger (both legs committed). Topic `bankjob.ledger`, key `to_account_id`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "occurred_at",
+    "entry_id",
+    "session_id",
+    "attempt_id",
+    "from_account_id",
+    "from_account",
+    "to_account_id",
+    "to_account",
+    "amount_cents"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "event_type": {
+      "const": "TransferPosted"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the change committed (the outbox row's transaction time)"
+    },
+    "entry_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "attempt_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "description": "Null for transfers made outside an attempt"
+    },
+    "from_account_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "from_account": {
+      "type": "string"
+    },
+    "to_account_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "to_account": {
+      "type": "string"
+    },
+    "amount_cents": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}

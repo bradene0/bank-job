@@ -1,22 +1,29 @@
 package dev.bradenevans.bankjob.gameapi.policy;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
+import dev.bradenevans.bankjob.gameapi.anomaly.AnomalySignals;
+import dev.bradenevans.bankjob.gameapi.anomaly.AnomalySignals.CreditSignal;
 import dev.bradenevans.bankjob.gameapi.attempt.AttemptRecord;
 import dev.bradenevans.bankjob.gameapi.attempt.AttemptStore;
 import dev.bradenevans.bankjob.gameapi.attempt.Outcome;
 import dev.bradenevans.bankjob.gameapi.attempt.PromptAssembler;
 import dev.bradenevans.bankjob.gameapi.attempt.ToolCallRecord;
+import dev.bradenevans.bankjob.gameapi.branch.BranchDirectory;
 import dev.bradenevans.bankjob.gameapi.support.IntegrationTest;
 import dev.bradenevans.bankjob.gameapi.support.TestBranches;
 import dev.bradenevans.bankjob.gameapi.tools.BankTools;
 import dev.bradenevans.bankjob.gameapi.tools.BankTools.ToolOutcome;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
+import org.springframework.kafka.listener.MessageListenerContainer;
 
 /**
  * Each level's controls, exercised through the real tools, policy engine, ledger and Postgres. The
@@ -36,6 +43,9 @@ class PolicyLevelsIT {
   @Autowired TestBranches branches;
   @Autowired BankTools tools;
   @Autowired AttemptStore attempts;
+  @Autowired BranchDirectory directory;
+  @Autowired AnomalySignals signals;
+  @Autowired KafkaListenerEndpointRegistry listeners;
 
   private record Attempt(AttemptRecord record, UUID sessionId) {}
 
@@ -245,7 +255,38 @@ class PolicyLevelsIT {
         new Attempt(branches.newAttempt(first.sessionId(), 5, "p3.x1.t2.y1"), first.sessionId());
     verify(a, leakedAnswer(a));
 
+    // The signal arrives through the outbox, Kafka and the anomaly scorer.
+    UUID mule = directory.holder(a.sessionId(), MULE).orElseThrow().accountId();
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .until(
+            () -> {
+              CreditSignal credits = signals.credits(mule);
+              return !credits.stale() && credits.lastTellerCreditAt() != null;
+            });
+
     assertThat(deniedCode(a, transfer(a, 200, "k2"))).isEqualTo("anomaly_velocity");
+  }
+
+  @Test
+  void level5FailsClosedWhileAnomalyScoringIsBehind() {
+    MessageListenerContainer scorer = listeners.getListenerContainer("anomaly-scoring");
+    scorer.stop();
+    try {
+      Attempt first = attempt(1);
+      assertPosted(transfer(first, 200, "k1"));
+      attempts.finish(
+          first.record().ref(),
+          new AttemptStore.Finish(Outcome.WON, 20_000, "x", "end_turn", 0, 0, false));
+      Attempt a =
+          new Attempt(branches.newAttempt(first.sessionId(), 5, "p3.x1.t2.y1"), first.sessionId());
+      verify(a, leakedAnswer(a));
+
+      // Without the scorer the velocity signal cannot be trusted, so the rule denies.
+      assertThat(deniedCode(a, transfer(a, 200, "k2"))).isEqualTo("anomaly_signals_stale");
+    } finally {
+      scorer.start();
+    }
   }
 
   @Test

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bankjob.bradenevans.dev/contracts/events/AttemptResolved.schema.json",
+  "title": "AttemptResolved",
+  "description": "An attempt finished; the outcome was decided from the ledger. Topic `bankjob.outcomes`, key `session_id`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "occurred_at",
+    "attempt_id",
+    "session_id",
+    "level",
+    "combo_id",
+    "outcome",
+    "amount_cents",
+    "cached"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "event_type": {
+      "const": "AttemptResolved"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the change committed (the outbox row's transaction time)"
+    },
+    "attempt_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "combo_id": {
+      "type": "string",
+      "pattern": "^p[1-6]\\.x[1-6]\\.t[1-6]\\.y[1-4]$"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "won",
+        "blocked",
+        "refused",
+        "error"
+      ]
+    },
+    "amount_cents": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Money that reached BV-MULE-01 in this attempt"
+    },
+    "cached": {
+      "type": "boolean"
+    }
+  }
+}

@@ -22,6 +22,7 @@ import net.jqwik.api.lifecycle.AfterContainer;
 import net.jqwik.api.lifecycle.BeforeContainer;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
@@ -38,6 +39,7 @@ class LedgerInvariantProperties {
   record Transfer(int from, int to, long cents) {}
 
   static PostgreSQLContainer postgres;
+  static KafkaContainer kafka;
   static ConfigurableApplicationContext context;
   static LedgerService ledger;
   static LedgerReconciler reconciler;
@@ -47,6 +49,8 @@ class LedgerInvariantProperties {
   static void startApplication() {
     postgres = new PostgreSQLContainer(TestcontainersConfiguration.POSTGRES);
     postgres.start();
+    kafka = new KafkaContainer(TestcontainersConfiguration.KAFKA);
+    kafka.start();
     context =
         new SpringApplicationBuilder(GameApiApplication.class)
             .profiles("test")
@@ -55,7 +59,8 @@ class LedgerInvariantProperties {
                 "--server.port=0",
                 "--spring.datasource.url=" + postgres.getJdbcUrl(),
                 "--spring.datasource.username=" + postgres.getUsername(),
-                "--spring.datasource.password=" + postgres.getPassword());
+                "--spring.datasource.password=" + postgres.getPassword(),
+                "--spring.kafka.bootstrap-servers=" + kafka.getBootstrapServers());
     ledger = context.getBean(LedgerService.class);
     reconciler = context.getBean(LedgerReconciler.class);
     branches = context.getBean(TestBranches.class);
@@ -68,6 +73,9 @@ class LedgerInvariantProperties {
     }
     if (postgres != null) {
       postgres.stop();
+    }
+    if (kafka != null) {
+      kafka.stop();
     }
   }
 

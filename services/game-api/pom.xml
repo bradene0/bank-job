@@ -82,6 +82,11 @@
       <artifactId>mcp-json-jackson3</artifactId>
       <version>${mcp.version}</version>
     </dependency>
+    <!-- Outbox publisher and the projection consumers (ADR-0002). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-kafka</artifactId>
+    </dependency>
     <!-- Micrometer Tracing with the OpenTelemetry bridge and OTLP exporter. No javaagent: it
          cannot instrument a native image (ADR-0004). -->
     <dependency>
@@ -123,6 +128,16 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-micrometer-tracing-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-kafka</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

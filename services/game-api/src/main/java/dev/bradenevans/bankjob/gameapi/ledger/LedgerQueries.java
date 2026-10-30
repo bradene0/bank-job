@@ -1,7 +1,6 @@
 package dev.bradenevans.bankjob.gameapi.ledger;
 
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -30,22 +29,6 @@ public class LedgerQueries {
         .param("account", accountId)
         .param("attempt", attempt.id())
         .param("created", Timestamp.from(attempt.createdAt()))
-        .query(Long.class)
-        .single();
-  }
-
-  /** Money credited to an account by attempts (not opening balances) since a point in time. */
-  @Transactional(readOnly = true)
-  public long attemptCreditsSince(UUID accountId, Instant since) {
-    return jdbc.sql(
-            """
-            SELECT coalesce(sum(p.amount_cents), 0)
-            FROM postings p JOIN journal_entries e ON e.id = p.entry_id
-            WHERE p.account_id = :account AND p.amount_cents > 0
-              AND e.attempt_id IS NOT NULL AND e.created_at >= :since
-            """)
-        .param("account", accountId)
-        .param("since", Timestamp.from(since))
         .query(Long.class)
         .single();
   }

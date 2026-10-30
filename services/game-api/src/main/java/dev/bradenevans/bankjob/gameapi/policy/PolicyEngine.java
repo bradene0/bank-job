@@ -1,11 +1,12 @@
 package dev.bradenevans.bankjob.gameapi.policy;
 
+import dev.bradenevans.bankjob.gameapi.anomaly.AnomalySignals;
+import dev.bradenevans.bankjob.gameapi.anomaly.AnomalySignals.CreditSignal;
 import dev.bradenevans.bankjob.gameapi.attempt.PromptAssembler;
 import dev.bradenevans.bankjob.gameapi.branch.BranchDirectory;
 import dev.bradenevans.bankjob.gameapi.branch.BranchDirectory.AccountHolder;
 import dev.bradenevans.bankjob.gameapi.content.LevelDefinition;
 import dev.bradenevans.bankjob.gameapi.content.LevelDefinition.Controls;
-import dev.bradenevans.bankjob.gameapi.ledger.LedgerQueries;
 import dev.bradenevans.bankjob.gameapi.policy.ToolRequest.TransferFunds;
 import dev.bradenevans.bankjob.gameapi.policy.ToolRequest.UpdateContactInfo;
 import dev.bradenevans.bankjob.gameapi.policy.ToolRequest.VerifyIdentity;
@@ -36,19 +37,19 @@ public class PolicyEngine {
 
   private final BranchDirectory directory;
   private final PhoneConfirmation phoneConfirmation;
-  private final LedgerQueries ledgerQueries;
+  private final AnomalySignals anomalySignals;
   private final PromptAssembler prompts;
   private final Clock clock;
 
   PolicyEngine(
       BranchDirectory directory,
       PhoneConfirmation phoneConfirmation,
-      LedgerQueries ledgerQueries,
+      AnomalySignals anomalySignals,
       PromptAssembler prompts,
       Clock clock) {
     this.directory = directory;
     this.phoneConfirmation = phoneConfirmation;
-    this.ledgerQueries = ledgerQueries;
+    this.anomalySignals = anomalySignals;
     this.prompts = prompts;
     this.clock = clock;
   }
@@ -165,17 +166,27 @@ public class PolicyEngine {
             PolicyDecision.deny(
                 "anomaly_repeat_transfer", "Only one transfer is allowed per request."));
       }
-      Instant since = Instant.now(clock).minus(VELOCITY_WINDOW);
+      // Fed by Kafka (anomaly scoring); a signal that may be behind the ledger is not trusted.
       Optional<AccountHolder> destination =
           directory.holder(facts.sessionId(), request.toAccount());
-      if (destination.isPresent()
-          && ledgerQueries.attemptCreditsSince(destination.get().accountId(), since) > 0) {
-        return Optional.of(
-            PolicyDecision.deny(
-                "anomaly_velocity",
-                "The destination account received a teller transfer in the last "
-                    + VELOCITY_WINDOW.toMinutes()
-                    + " minutes."));
+      if (destination.isPresent()) {
+        CreditSignal credits = anomalySignals.credits(destination.get().accountId());
+        if (credits.stale()) {
+          return Optional.of(
+              PolicyDecision.deny(
+                  "anomaly_signals_stale",
+                  "Anomaly scoring has not caught up with this account's recent activity;"
+                      + " try again shortly."));
+        }
+        Instant since = Instant.now(clock).minus(VELOCITY_WINDOW);
+        if (credits.lastTellerCreditAt() != null && credits.lastTellerCreditAt().isAfter(since)) {
+          return Optional.of(
+              PolicyDecision.deny(
+                  "anomaly_velocity",
+                  "The destination account received a teller transfer in the last "
+                      + VELOCITY_WINDOW.toMinutes()
+                      + " minutes."));
+        }
       }
       passed.add("no velocity anomaly");
     }

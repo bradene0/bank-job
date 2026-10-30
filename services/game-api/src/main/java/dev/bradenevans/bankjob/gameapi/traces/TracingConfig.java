@@ -11,8 +11,8 @@ class TracingConfig {
 
   /**
    * Drops health probes (compose and k3s poll them every few seconds) and database calls with no
-   * enclosing operation (connection housekeeping, startup jobs), which would otherwise each become
-   * a one-span trace.
+   * enclosing operation (the outbox relay's polling, Hikari housekeeping), which would otherwise
+   * each become a one-span trace.
    */
   @Bean
   ObservationPredicate dropUntracedNoise() {

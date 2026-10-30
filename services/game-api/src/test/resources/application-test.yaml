@@ -1,6 +1,11 @@
 bankjob:
   secrets:
     allow-ephemeral: true
+  outbox:
+    poll-interval: 100ms
+    max-backoff: 1s
+  kafka:
+    consumer-retries: 1
   traces:
     query-url: http://127.0.0.1:9  # nothing listens: the trace store is "unavailable"
   sessions:

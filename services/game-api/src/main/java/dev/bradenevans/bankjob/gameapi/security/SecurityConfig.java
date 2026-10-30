@@ -73,7 +73,12 @@ class SecurityConfig {
             auth ->
                 // Public paths are open for every method so a wrong method gets a clean 405
                 // from MVC rather than a misleading 401.
-                auth.requestMatchers("/healthz", "/actuator/health/**", "/v1/hello", "/v1/sessions")
+                auth.requestMatchers(
+                        "/healthz",
+                        "/actuator/health/**",
+                        "/v1/hello",
+                        "/v1/sessions",
+                        "/v1/leaderboard")
                     .permitAll()
                     .requestMatchers("/error")
                     .permitAll()
