@@ -152,7 +152,8 @@ jobs:
       - name: Build and deploy
         working-directory: web
         env:
-          # A token limited to this one Worker (and Workers Routes on the zone).
+          # A token with Editor on this one Worker: versions only, the domain is never touched.
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_DEPLOY }}
+          RELEASE_TAG: sha-${{ env.SHA }}
           WRANGLER_SEND_METRICS: "false"
         run: scripts/deploy-worker.sh ../eval/replay ../eval/summary.json
