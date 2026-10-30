@@ -1,11 +1,5 @@
-data "cloudflare_zone" "site" {
-  filter = {
-    name = var.zone_name
-  }
-}
-
 locals {
-  account_id = data.cloudflare_zone.site.account.id
+  account_id = var.account_id
   live_host  = "${var.live_subdomain}.${var.zone_name}"
 }
 
@@ -38,7 +32,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "bankjob" {
 }
 
 resource "cloudflare_dns_record" "live" {
-  zone_id = data.cloudflare_zone.site.zone_id
+  zone_id = var.zone_id
   name    = local.live_host
   type    = "CNAME"
   content = "${cloudflare_zero_trust_tunnel_cloudflared.bankjob.id}.cfargotunnel.com"

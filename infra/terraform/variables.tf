@@ -1,5 +1,18 @@
+# IDs, not secrets. Passing them avoids a zone lookup, so the API token needs no Zone Read.
+variable "account_id" {
+  description = "Cloudflare account that owns the zone."
+  type        = string
+  default     = "8d38c5eb5e8e2e751921876904264f9f"
+}
+
+variable "zone_id" {
+  description = "The existing bradenevans.dev zone. Terraform never creates or deletes it."
+  type        = string
+  default     = "a84f13980b82b8f393c3cc34947676b0"
+}
+
 variable "zone_name" {
-  description = "The existing Cloudflare zone. Terraform reads it and never creates or deletes it."
+  description = "Name of the zone with zone_id."
   type        = string
   default     = "bradenevans.dev"
 }
