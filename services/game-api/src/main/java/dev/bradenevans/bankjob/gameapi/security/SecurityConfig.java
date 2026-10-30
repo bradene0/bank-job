@@ -158,6 +158,12 @@ class SecurityConfig {
     config.setMaxAge(3600L);
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/v1/**", config);
+    // The game polls readiness to switch between live and replay mode.
+    CorsConfiguration health = new CorsConfiguration();
+    health.setAllowedOrigins(cors.allowedOrigins());
+    health.setAllowedMethods(List.of("GET"));
+    health.setMaxAge(3600L);
+    source.registerCorsConfiguration("/healthz", health);
     return source;
   }
 }
