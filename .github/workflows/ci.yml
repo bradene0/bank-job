@@ -87,6 +87,8 @@ jobs:
         run: pnpm test
       - name: Build
         run: pnpm build
+      - name: No prompt fragment in the bundle (ADR-0003)
+        run: pnpm check:bundle
 
   native:
     # Proves ADR-0004 holds on every change: the game-api still compiles to a native
@@ -166,7 +168,10 @@ jobs:
     # every service healthy.
     name: Compose smoke test
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
+    env:
+      # Every Playwright test is a new player (a new guest session) from the same address.
+      SESSIONS_MAX_PER_IP_PER_HOUR: "1000"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: cp .env.example .env
@@ -205,6 +210,13 @@ jobs:
             | jq -e '.outcome != "won"'
       - name: One attempt, one connected trace (browser -> game-api -> agent -> MCP -> ledger -> Kafka -> consumers)
         run: python3 infra/compose/check_trace.py
+      - name: Game UI end to end (Playwright + axe; mouse, keyboard and phone, live and replay)
+        # The browsers come in Microsoft's image, pinned to the same Playwright version as the
+        # lockfile. Host networking: the game on 5173 talks to game-api on 8080, as a player's would.
+        run: |
+          docker run --rm --network host --ipc host -e CI=true \
+            -v "${PWD}/web:/work" -w /work mcr.microsoft.com/playwright:v1.64.1-noble \
+            bash -c "npm install -g pnpm@10.33.0 >/dev/null && pnpm install --frozen-lockfile && pnpm exec playwright test"
       - name: Kafka outage (stop the broker mid-game; nothing lost or applied twice once it is back)
         run: |
           psql() { docker compose exec -T postgres psql -U bankjob -d bankjob -Atc "$1"; }

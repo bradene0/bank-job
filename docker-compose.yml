@@ -94,6 +94,8 @@ services:
       # (tokens stop working after a restart). Production refuses to start without them.
       BANKJOB_ALLOW_EPHEMERAL_SECRETS: "true"
       IP_HASH_SALT: ${IP_HASH_SALT:-}
+      # Guest sessions per client IP per hour; CI raises it because every test is a new player.
+      SESSIONS_MAX_PER_IP_PER_HOUR: ${SESSIONS_MAX_PER_IP_PER_HOUR:-30}
       CORS_ALLOWED_ORIGINS: http://localhost:5173
       # game-api and the agent share LLM_MODE and the model id; stub never calls the model.
       LLM_MODE: ${LLM_MODE:-stub}
