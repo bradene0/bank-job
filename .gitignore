@@ -7,8 +7,7 @@ dev-keys/
 
 # Terraform
 .terraform/
-*.tfstate
-*.tfstate.*
+*.tfstate*
 crash.log
 
 # Java
