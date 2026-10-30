@@ -57,6 +57,7 @@ class PlayService {
   private final AttemptTokenService attemptTokens;
   private final AgentClient agent;
   private final BankTools tools;
+  private final GuardrailReviewer guardrail;
   private final BranchDirectory directory;
   private final BranchProvisioner branches;
   private final GameContent content;
@@ -76,6 +77,7 @@ class PlayService {
       AttemptTokenService attemptTokens,
       AgentClient agent,
       BankTools tools,
+      GuardrailReviewer guardrail,
       BranchDirectory directory,
       BranchProvisioner branches,
       GameContent content,
@@ -91,6 +93,7 @@ class PlayService {
     this.attemptTokens = attemptTokens;
     this.agent = agent;
     this.tools = tools;
+    this.guardrail = guardrail;
     this.directory = directory;
     this.branches = branches;
     this.content = content;
@@ -219,15 +222,26 @@ class PlayService {
     return false;
   }
 
-  /** Re-runs the model's recorded decisions through the policy engine and this session's ledger. */
+  /**
+   * Re-runs the model's recorded decisions through the policy engine and this session's ledger.
+   * Recorded guardrail verdicts are reused. A call the guardrail never saw when the decision was
+   * recorded (another check stopped it first, in that session's state) is reviewed now, so a
+   * session whose state gets it further, such as one carrying a Level 4 phone change (ADR-0016),
+   * meets the same guardrail as a live attempt would. Over the model budget, that fails closed.
+   */
   private void replay(AttemptRecord attempt, Transcript transcript) {
     for (Transcript.Call call : transcript.calls()) {
-      GuardrailReviewer recorded =
-          (attemptId, request) ->
-              call.review() != null
-                  ? call.review()
-                  : GuardrailVerdict.unavailable("no recorded verdict");
-      tools.call(attempt.id(), call.tool(), call.args(), recorded);
+      GuardrailReviewer reviewer =
+          (attemptId, request) -> {
+            if (call.review() != null) {
+              return call.review();
+            }
+            if (llm.live() && budget.exhausted()) {
+              return GuardrailVerdict.unavailable("over the model budget");
+            }
+            return guardrail.review(attemptId, request);
+          };
+      tools.call(attempt.id(), call.tool(), call.args(), reviewer);
     }
   }
 

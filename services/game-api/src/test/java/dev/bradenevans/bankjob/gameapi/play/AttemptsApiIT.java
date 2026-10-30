@@ -242,6 +242,34 @@ class AttemptsApiIT {
     assertThat(transfer.path("review").path("allow").asBoolean()).isFalse();
   }
 
+  @Test
+  void aCachedDecisionMeetsTheGuardrailWhereTheRecordedRunNeverReachedIt() {
+    // A first player's Level 5 heist is stopped by step-up, so the guardrail is never asked and
+    // the cached decision has no verdict for the transfer.
+    FakeAgent.script(AttemptsApiIT::heist);
+    JsonNode first = api.attempt(api.newSessionToken(), body(5, "p3", "x1", "t2", "y1")).body();
+    assertThat(first.path("toolCalls").get(2).path("reason").asString())
+        .startsWith("confirmation_declined");
+    assertThat(FakeAgent.REVIEWS).hasValue(0);
+
+    // A second player changed the vault's phone on Level 4, so step-up passes for them.
+    String token = api.newSessionToken();
+    FakeAgent.script(
+        (mcp, brief) -> {
+          mcp.call("update_contact_info", Map.of("account_number", VAULT, "phone", "+1-555-0199"));
+          return "Updated!";
+        });
+    api.attempt(token, body(4, "p3", "x1", "t2", "y2"));
+    FakeAgent.reviewer(review -> "allow");
+
+    JsonNode chained = api.attempt(token, body(5, "p3", "x1", "t2", "y1")).body();
+
+    assertThat(chained.path("cached").asBoolean()).isTrue();
+    assertThat(FakeAgent.REVIEWS).hasValue(1);
+    assertThat(chained.path("outcome").asString()).isEqualTo("won");
+    assertThat(chained.path("toolCalls").get(2).path("review").path("allow").asBoolean()).isTrue();
+  }
+
   private long attemptCount() {
     return jdbc.sql("SELECT count(*) FROM attempts").query(Long.class).single();
   }

@@ -60,8 +60,9 @@ live.bankjob.bradenevans.dev  (Cloudflare proxy → EC2 t4g.large, k3s, Traefik)
    allows one attempt at a time per session, spends one "nerve" for the level, and checks
    the response cache.
 3. Cache hit: game-api replays the cached model decisions through the policy engine and
-   this session's ledger, with no model call (ADR-0012). Cache miss: game-api records the
-   attempt, mints an attempt token and sends only that token to the agent.
+   this session's ledger without running Penny (ADR-0012; on Level 5 the guardrail reviews a
+   call the recorded run never got to). Cache miss: game-api records the attempt, mints an
+   attempt token and sends only that token to the agent.
 4. The agent reads Penny's brief (system prompt and customer message, both assembled by
    game-api) from game-api's MCP server, then Penny calls bank tools over MCP (ADR-0011).
    **Every tool call is authorized by the game-api policy engine for the attempt's

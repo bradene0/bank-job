@@ -20,8 +20,9 @@ policy engine for every cached attempt.
   uses: argument validation, the policy engine and this session's ledger. Each replayed
   call gets a fresh, recorded policy decision. The outcome comes from this session's
   ledger, as it does for a live run.
-- Recorded guardrail verdicts are reused, so a cache hit never calls a model. A replayed
-  sensitive call with no recorded verdict is denied (fail closed).
+- Recorded guardrail verdicts are reused, so a cache hit never runs Penny. A replayed call the
+  guardrail never saw (another check stopped it in the recorded session) is reviewed when the
+  replay reaches it, or denied if the model budget is spent (amended 2026-10-30, below).
 
 ## Consequences
 - Cache hits are real attempts: money moves, every control applies, and the timeline is
@@ -30,3 +31,14 @@ policy engine for every cached attempt.
   drained vault. Penny's cached reply text may then not match the replayed outcome. The
   outcome is authoritative and the reply is flavor.
 - Content changes invalidate the cache automatically. Old rows stay until retention runs.
+
+## Amendment (2026-10-30): review calls the recorded run never got to
+At first a replayed sensitive call with no recorded verdict was denied (fail closed). The eval
+matrix showed what that does to Level 5 once sessions carry state across levels (ADR-0016): a
+first player's attempt is stopped by step-up, so the guardrail is never asked; a later player
+who changed the vault's phone on Level 4 gets the cached decision, passes step-up, and was then
+denied for want of a verdict. Whether the Level 4 to Level 5 chain worked depended on who played
+the combo first that day. Now the guardrail reviews such a call during the replay, exactly as it
+would in a live attempt. Only Level 5 sensitive calls that pass every deterministic check get
+there, so cache hits that need a model call are rare; over the model budget they still fail
+closed.
