@@ -34,19 +34,24 @@ public class TestBranches {
     this.ledger = ledger;
   }
 
+  /** The seed every test branch uses, so security answers are predictable. */
+  public static final String DAILY_SEED = "test-seed";
+
   public UUID newSession() {
     return transactions.execute(
         status -> {
           UUID sessionId =
               jdbc.sql(
                       """
-                      INSERT INTO sessions (expires_at, ip_hash, nerve_remaining)
-                      VALUES (now() + interval '2 hours', 'test', '{}'::jsonb)
+                      INSERT INTO sessions (expires_at, ip_hash, daily_seed, nerve_remaining)
+                      VALUES (now() + interval '2 hours', 'test', :seed,
+                              '{"1": 8, "2": 7, "3": 6, "4": 5, "5": 4}'::jsonb)
                       RETURNING id
                       """)
+                  .param("seed", DAILY_SEED)
                   .query(UUID.class)
                   .single();
-          provisioner.provision(sessionId);
+          provisioner.provision(sessionId, DAILY_SEED);
           return sessionId;
         });
   }

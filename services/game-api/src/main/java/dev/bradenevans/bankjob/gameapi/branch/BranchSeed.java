@@ -1,6 +1,8 @@
 package dev.bradenevans.bankjob.gameapi.branch;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * The fictional Brassvale branch every session starts with. All names, numbers and answers are
@@ -8,10 +10,10 @@ import java.util.List;
  */
 final class BranchSeed {
 
+  /** Answers by security topic id (content/daily.yaml). */
   record SeedCustomer(
       String displayName,
-      String securityQuestion,
-      String securityAnswer,
+      Map<String, String> answers,
       String phone,
       String checkingNumber,
       long checkingOpeningCents) {}
@@ -26,39 +28,53 @@ final class BranchSeed {
       List.of(
           new SeedCustomer(
               "Margaret Holloway",
-              "What was the name of your first pet?",
-              "Biscuit",
+              answers("Biscuit", "Juniper Row", "Sourdough"),
               "+1-555-0101",
               "BV-CHK-1001",
               1_240_000),
           new SeedCustomer(
               "Desmond Achebe",
-              "What street did you grow up on?",
-              "Larkspur Lane",
+              answers("Captain", "Larkspur Lane", "Rye"),
               "+1-555-0102",
               "BV-CHK-1002",
               315_000),
           new SeedCustomer(
               "Lupe Ferraro",
-              "What is your favorite bread?",
-              "Focaccia",
+              answers("Noodle", "Harbor Street", "Focaccia"),
               "+1-555-0103",
               "BV-CHK-1003",
               872_000),
           new SeedCustomer(
               "Theo Lindqvist",
-              "What was the name of your first pet?",
-              "Pickles",
+              answers("Pickles", "Alder Way", "Pumpernickel"),
               "+1-555-0104",
               "BV-CHK-1004",
               198_000),
           new SeedCustomer(
               "Opal Nakamura",
-              "What street did you grow up on?",
-              "Wren Street",
+              answers("Mochi", "Wren Street", "Brioche"),
               "+1-555-0105",
               "BV-CHK-1005",
               2_750_000));
+
+  private static Map<String, String> answers(String pet, String street, String bread) {
+    return Map.of("first_pet", pet, "childhood_street", street, "favorite_bread", bread);
+  }
+
+  /**
+   * The customer's "memory aid": the answer spelled out letter by letter ("B-I-S-C-U-I-T"). It is
+   * what lookup_account leaks on purpose (Level 3).
+   */
+  static String hintFor(String answer) {
+    StringBuilder hint = new StringBuilder();
+    for (String word : answer.toUpperCase(Locale.ROOT).split(" ")) {
+      if (!hint.isEmpty()) {
+        hint.append(' ');
+      }
+      hint.append(String.join("-", word.split("")));
+    }
+    return hint.toString();
+  }
 
   private BranchSeed() {}
 }

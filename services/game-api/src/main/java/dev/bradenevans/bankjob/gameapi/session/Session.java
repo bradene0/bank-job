@@ -29,16 +29,25 @@ class Session {
   @Column(nullable = false, updatable = false)
   private String ipHash;
 
+  @Column(nullable = false, updatable = false)
+  private String dailySeed;
+
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(nullable = false)
   private Map<String, Integer> nerveRemaining;
 
   protected Session() {}
 
-  Session(Instant createdAt, Instant expiresAt, String ipHash, Map<String, Integer> nerve) {
+  Session(
+      Instant createdAt,
+      Instant expiresAt,
+      String ipHash,
+      String dailySeed,
+      Map<String, Integer> nerve) {
     this.createdAt = createdAt;
     this.expiresAt = expiresAt;
     this.ipHash = ipHash;
+    this.dailySeed = dailySeed;
     this.nerveRemaining = new LinkedHashMap<>(nerve); // keep level order 1..5 in responses
   }
 
@@ -52,6 +61,10 @@ class Session {
 
   Instant expiresAt() {
     return expiresAt;
+  }
+
+  String dailySeed() {
+    return dailySeed;
   }
 
   Map<String, Integer> nerveRemaining() {

@@ -1,6 +1,7 @@
 package dev.bradenevans.bankjob.gameapi.session;
 
 import dev.bradenevans.bankjob.gameapi.branch.BranchProvisioner;
+import dev.bradenevans.bankjob.gameapi.content.DailySeed;
 import dev.bradenevans.bankjob.gameapi.content.GameContent;
 import dev.bradenevans.bankjob.gameapi.security.JwtProperties;
 import java.time.Clock;
@@ -20,6 +21,7 @@ class SessionService {
   private final SessionRepository sessions;
   private final BranchProvisioner branch;
   private final GameContent content;
+  private final DailySeed dailySeed;
   private final JwtProperties jwt;
   private final Clock clock;
 
@@ -27,11 +29,13 @@ class SessionService {
       SessionRepository sessions,
       BranchProvisioner branch,
       GameContent content,
+      DailySeed dailySeed,
       JwtProperties jwt,
       Clock clock) {
     this.sessions = sessions;
     this.branch = branch;
     this.content = content;
+    this.dailySeed = dailySeed;
     this.jwt = jwt;
     this.clock = clock;
   }
@@ -42,8 +46,10 @@ class SessionService {
     // Second precision so the JWT's iat/exp and the stored timestamps agree exactly.
     Instant now = Instant.now(clock).truncatedTo(ChronoUnit.SECONDS);
     Session session =
-        sessions.save(new Session(now, now.plus(jwt.ttl()), ipHash, content.initialNerve()));
-    branch.provision(session.id());
+        sessions.save(
+            new Session(
+                now, now.plus(jwt.ttl()), ipHash, dailySeed.today(), content.initialNerve()));
+    branch.provision(session.id(), session.dailySeed());
     return new CreatedSession(
         session.id(), session.createdAt(), session.expiresAt(), session.nerveRemaining());
   }
