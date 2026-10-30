@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { tile, winLevel1 } from "./helpers";
 
 // WCAG 2.2 AA, checked by axe on each screen, in both themes.

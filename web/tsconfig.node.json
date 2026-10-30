@@ -14,5 +14,5 @@
     "strict": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["vite.config.ts", "content-plugin.ts", "content-plugin.test.ts", "playwright.config.ts", "e2e"]
+  "include": ["vite.config.ts", "content-plugin.ts", "content-plugin.test.ts", "csp.test.ts", "playwright.config.ts", "e2e"]
 }

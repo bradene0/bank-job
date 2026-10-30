@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { API, slot, tile } from "./helpers";
 
 const WON = readFileSync(path.join(import.meta.dirname, "fixtures/replay-won.json"), "utf8");

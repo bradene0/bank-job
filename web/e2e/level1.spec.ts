@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { callAndWait, drag, slot, tile, winLevel1 } from "./helpers";
 
 // The M4 bar: a first-time player finishes Level 1 in under two minutes, by mouse, touch and

@@ -7,6 +7,6 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/setupTests.ts"],
-    include: ["src/**/*.test.{ts,tsx}", "content-plugin.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}", "content-plugin.test.ts", "csp.test.ts"],
   },
 });
