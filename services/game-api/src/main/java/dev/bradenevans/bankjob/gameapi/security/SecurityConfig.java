@@ -12,6 +12,7 @@ import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
@@ -40,7 +41,30 @@ class SecurityConfig {
   @ConfigurationProperties("bankjob.cors")
   record CorsProperties(List<String> allowedOrigins) {}
 
+  /**
+   * The MCP endpoint takes attempt tokens only (audience {@code bankjob-mcp}). It is internal: the
+   * ingress never routes it, and the token check holds even if it did.
+   */
   @Bean
+  @Order(1)
+  SecurityFilterChain mcpSecurity(HttpSecurity http, ECKey signingKey, JwtProperties jwt)
+      throws Exception {
+    http.securityMatcher("/mcp")
+        .csrf(csrf -> csrf.disable())
+        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(
+            auth -> auth.anyRequest().hasAuthority("SCOPE_" + AttemptTokenService.SCOPE))
+        .oauth2ResourceServer(
+            oauth ->
+                oauth.jwt(
+                    j ->
+                        j.decoder(
+                            decoder(signingKey, jwt.issuer(), AttemptTokenService.AUDIENCE))));
+    return http.build();
+  }
+
+  @Bean
+  @Order(2)
   SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
     http.csrf(csrf -> csrf.disable()) // stateless bearer tokens, no cookies
         .cors(Customizer.withDefaults())
@@ -93,20 +117,24 @@ class SecurityConfig {
     return new NimbusJwtEncoder(new ImmutableJWKSet<>(new JWKSet(signingKey)));
   }
 
+  /** Guest tokens for the player API. */
   @Bean
   JwtDecoder jwtDecoder(ECKey signingKey, JwtProperties jwt) {
+    return decoder(signingKey, jwt.issuer(), jwt.audience());
+  }
+
+  private static JwtDecoder decoder(ECKey signingKey, String issuer, String audience) {
     // Verify with the public half only, and accept ES256 alone (no algorithm confusion).
     DefaultJWTProcessor<SecurityContext> processor = new DefaultJWTProcessor<>();
     processor.setJWSKeySelector(
         new JWSVerificationKeySelector<>(
             JWSAlgorithm.ES256, new ImmutableJWKSet<>(new JWKSet(signingKey.toPublicJWK()))));
     NimbusJwtDecoder decoder = new NimbusJwtDecoder(processor);
-    OAuth2TokenValidator<Jwt> audience =
-        new JwtClaimValidator<List<String>>(
-            "aud", aud -> aud != null && aud.contains(jwt.audience()));
+    OAuth2TokenValidator<Jwt> audienceValidator =
+        new JwtClaimValidator<List<String>>("aud", aud -> aud != null && aud.contains(audience));
     decoder.setJwtValidator(
         new DelegatingOAuth2TokenValidator<>(
-            JwtValidators.createDefaultWithIssuer(jwt.issuer()), audience));
+            JwtValidators.createDefaultWithIssuer(issuer), audienceValidator));
     return decoder;
   }
 

@@ -24,6 +24,7 @@
     <google-java-format.version>1.35.0</google-java-format.version>
     <jqwik.version>1.10.2</jqwik.version>
     <archunit.version>1.5.1</archunit.version>
+    <mcp.version>2.1.0</mcp.version>
   </properties>
 
   <dependencies>
@@ -67,6 +68,17 @@
     <dependency>
       <groupId>tools.jackson.dataformat</groupId>
       <artifactId>jackson-dataformat-yaml</artifactId>
+    </dependency>
+    <!-- MCP server for Penny's bank tools (stateless servlet transport). -->
+    <dependency>
+      <groupId>io.modelcontextprotocol.sdk</groupId>
+      <artifactId>mcp-core</artifactId>
+      <version>${mcp.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.modelcontextprotocol.sdk</groupId>
+      <artifactId>mcp-json-jackson3</artifactId>
+      <version>${mcp.version}</version>
     </dependency>
 
     <dependency>

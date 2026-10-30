@@ -1,6 +1,7 @@
 # Build context is the repo root; send only what the game-api build needs.
 *
 !content/*.yaml
+!content/prompts/*.md
 !services/game-api/.mvn/
 !services/game-api/mvnw
 !services/game-api/pom.xml

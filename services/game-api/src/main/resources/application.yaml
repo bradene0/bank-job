@@ -1,6 +1,11 @@
 spring:
   application:
     name: game-api
+  threads:
+    virtual:
+      # Attempts block on the agent for seconds, and Level 5 tool calls block on a nested
+      # guardrail call; virtual threads keep that from exhausting the request pool.
+      enabled: true
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:bankjob}
     username: ${POSTGRES_USER:bankjob}
@@ -44,6 +49,23 @@ bankjob:
     trust-cf-connecting-ip: ${TRUST_CF_CONNECTING_IP:false}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  game:
+    daily-seed-override: ${DAILY_SEED_OVERRIDE:}
+    max-tool-calls: ${PENNY_MAX_TOOL_CALLS:8}
+  llm:
+    # game-api and the agent read the same LLM_MODE; stub never calls the model.
+    mode: ${LLM_MODE:stub}
+    model: ${ANTHROPIC_MODEL:claude-haiku-5-5}
+    monthly-budget-cents: ${LLM_MONTHLY_BUDGET_CENTS:1200}
+    budget-cutoff: 0.8
+    # Claude Haiku 5.5 list price for prompts under 100K tokens: $0.10 in, $0.50 out per MTok.
+    input-micros-per-mtok: 100000
+    output-micros-per-mtok: 500000
+    agent:
+      url: ${AGENT_URL:http://localhost:8000}
+      connect-timeout: 2s
+      run-timeout: 45s
+      review-timeout: 20s
 
 management:
   endpoints:
