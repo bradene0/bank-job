@@ -130,7 +130,7 @@ class PlayService {
     if (cached.isEmpty() && llm.live() && budget.exhausted()) {
       nerve.refund(sessionId, level);
       throw new PlayExceptions.LivePlayUnavailableException(
-          "over_budget", "Penny is on her break (the daily model budget is spent).");
+          "over_budget", "Penny is on her break (this month's model budget is spent).");
     }
 
     Span span = tracer.currentSpan();

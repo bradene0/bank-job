@@ -44,3 +44,30 @@ test("a combination with no recording says so and costs no nerve", async ({ page
   await expect(page.locator("#result-title")).toHaveText("No recording of that call yet.");
   await expect(page.getByRole("button", { name: "Level 1: Front Desk, 8 of 8 nerve left" })).toBeVisible();
 });
+
+test("when the model budget is spent, a live call plays its recording and says why", async ({ page }) => {
+  // The bank is open (real API), but game-api answers new calls with 503 over_budget, as it does
+  // past 80% of the month's model budget (LlmBudgetIT checks that side).
+  await page.route(`${API}/**`, (route) => route.continue());
+  await page.route(`${API}/v1/attempts`, (route) =>
+    route.request().method() === "OPTIONS"
+      ? route.continue()
+      : route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          headers: { "Access-Control-Allow-Origin": new URL(page.url()).origin },
+          body: JSON.stringify({ status: 503, replay: true, reason: "over_budget" }),
+        }),
+  );
+  await page.goto("/");
+  await expect(page.getByText("Live: Penny is at her desk")).toBeVisible();
+  for (const label of ["Branch Manager", "Urgent Fraud Alert", "Authority Pressure", "Small Wire ($200)"]) {
+    await tile(page, label).click();
+  }
+  await bell(page).click();
+  await expect(page.locator("#result-title")).toHaveText("The wire went through.");
+  await expect(page.getByText("Recorded result", { exact: true })).toBeVisible();
+  await expect(page.getByText(/this month's model budget is spent/)).toBeVisible();
+  // game-api refunded the nerve, so the session still has all of it.
+  await expect(page.getByRole("button", { name: /^Level 1: Front Desk, 8 of 8 nerve left/ })).toBeVisible();
+});

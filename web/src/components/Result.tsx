@@ -98,7 +98,7 @@ function noticeText(notice: Notice): string {
     case "replaying":
       switch (notice.reason) {
         case "over_budget":
-          return "Penny is on her break (today's model budget is spent), so this is a recorded result.";
+          return "Penny is on her break (this month's model budget is spent), so this is a recorded result.";
         case "rate_limited":
           return "Too many new sessions from your network this hour, so this is a recorded result.";
         default:

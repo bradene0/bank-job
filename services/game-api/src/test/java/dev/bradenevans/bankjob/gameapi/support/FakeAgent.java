@@ -18,8 +18,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * An in-process stand-in for the Python agent that speaks the same contract
- * (docs/contracts/agent-mcp.md): it accepts only a token (and a review id), and gets everything
- * else from game-api's MCP server, exactly like the real agent. Tests script what "Penny" does.
+ * (contracts/agent-mcp.md): it accepts only a token (and a review id), and gets everything else
+ * from game-api's MCP server, exactly like the real agent. Tests script what "Penny" does.
  */
 public final class FakeAgent {
 
@@ -43,6 +43,8 @@ public final class FakeAgent {
   private static volatile Script script = (mcp, brief) -> "Hello from the fake agent.";
   private static volatile Reviewer reviewer = review -> "deny";
   private static volatile boolean down;
+  private static volatile int inputTokens;
+  private static volatile String model = "stub";
   private static volatile int mcpPort;
 
   private FakeAgent() {}
@@ -53,6 +55,18 @@ public final class FakeAgent {
     script = (mcp, brief) -> "Hello from the fake agent.";
     reviewer = review -> "deny";
     down = false;
+    inputTokens = 0;
+    model = "stub";
+  }
+
+  /** The model the fake says answered (game-api caches only answers from the model it expects). */
+  public static void model(String value) {
+    model = value;
+  }
+
+  /** The model input tokens each run reports, which game-api counts against the budget. */
+  public static void inputTokensPerRun(int value) {
+    inputTokens = value;
   }
 
   public static void script(Script value) {
@@ -95,9 +109,9 @@ public final class FakeAgent {
       Map<String, Object> response = new LinkedHashMap<>();
       response.put("reply", reply);
       response.put("stopReason", "stub");
-      response.put("model", "stub");
+      response.put("model", model);
       response.put("toolCalls", 0);
-      response.put("usage", Map.of("inputTokens", 0, "outputTokens", 0));
+      response.put("usage", Map.of("inputTokens", inputTokens, "outputTokens", 0));
       respond(exchange, 200, response);
     } catch (RuntimeException e) {
       respond(exchange, 502, Map.of("title", e.getClass().getSimpleName(), "status", 502));
