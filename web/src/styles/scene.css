@@ -378,13 +378,14 @@
   white-space: nowrap;
 }
 
+/* A new line is highlighted as it lands; the text keeps full contrast throughout. */
 .passbook-lines tr:last-child > * {
-  animation: ink-in 600ms ease-out;
+  animation: fresh-ink 1.6s ease-out;
 }
 
-@keyframes ink-in {
+@keyframes fresh-ink {
   from {
-    color: transparent;
+    background: #f3e3a0;
   }
 }
 
