@@ -17,8 +17,11 @@ interface Props {
  */
 export function UnderTheHood({ played, api, token, pollMs = 1_000 }: Props) {
   return (
-    <details className="under-the-hood">
-      <summary>Under the hood</summary>
+    <div className="under-the-hood">
+      <p className="note">
+        Everything below is what the bank&apos;s systems recorded. <code>BV-MULE-01</code> is your
+        account.
+      </p>
       <h3>Tool calls</h3>
       <ToolCallTimeline calls={played.toolCalls} />
       <h3>Trace</h3>
@@ -34,7 +37,7 @@ export function UnderTheHood({ played, api, token, pollMs = 1_000 }: Props) {
       ) : (
         <LiveTrace played={played} api={api} token={token} pollMs={pollMs} />
       )}
-    </details>
+    </div>
   );
 }
 

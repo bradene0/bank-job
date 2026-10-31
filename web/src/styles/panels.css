@@ -67,37 +67,83 @@
   color: var(--text-muted);
 }
 
-/* Panels below the counter */
-.panel {
-  max-width: 88rem;
-  margin: var(--gap) auto 0;
+/* Sheets: "Under the hood" and the leaderboard, as modal dialogs over the scene. */
+.sheet {
+  width: min(56rem, calc(100vw - 2rem));
+  max-height: min(90vh, 60rem);
+  padding: 0;
+  border: 2px solid var(--hud-border);
+  border-radius: 14px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  color: var(--text);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 50%);
+}
+
+.sheet::backdrop {
+  background: rgb(5 10 8 / 70%);
+}
+
+.sheet-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.sheet-header h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.5rem;
+  color: var(--brass-strong);
+}
+
+.sheet-body {
   padding: 1rem;
 }
 
-/* Under the hood */
-.under-the-hood {
-  max-width: 88rem;
-  margin: var(--gap) auto 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  padding: 0.75rem 1rem;
+.sheet-body > p:first-child {
+  margin-top: 0;
 }
 
-.under-the-hood > summary {
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 1.125rem;
-  min-height: 44px;
+@media (max-width: 40rem) {
+  .sheet {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100%;
+    max-height: 100%;
+    margin: 0;
+    border-radius: 0;
+    border-width: 0;
+  }
+}
+
+.hud-toolbar {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
+.hud-toolbar button {
+  background: var(--hud-bg);
+  border-color: var(--hud-border);
+  color: var(--text);
+}
+
+.hud-toolbar button:hover {
+  border-color: var(--brass-strong);
+}
+
+/* Under the hood */
 .under-the-hood h3 {
-  margin-top: 1rem;
+  margin-top: 1.25rem;
 }
 
 .tool-calls {

@@ -81,10 +81,13 @@ describe("App", () => {
     });
     expect(screen.getByRole("button", { name: "Level 1: Front Desk, 7 of 8 nerve left, cracked" })).toBeInTheDocument();
 
-    await user.click(screen.getByText("Under the hood"));
-    const calls = screen.getByRole("list", { name: "Tool calls" });
+    await user.click(screen.getByRole("button", { name: "Under the hood" }));
+    const hood = screen.getByRole("dialog", { name: "Under the hood" });
+    const calls = within(hood).getByRole("list", { name: "Tool calls" });
     expect(calls.querySelectorAll('li[data-decision="allow"]')).toHaveLength(2);
     expect(within(calls).getByText("transfer_funds")).toBeInTheDocument();
+    await user.click(within(hood).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog", { name: "Under the hood" })).not.toBeInTheDocument();
   });
 
   it("acts out each tool call before revealing the result", async () => {
@@ -156,6 +159,15 @@ describe("App", () => {
     const passbook = screen.getByRole("region", { name: /^Passbook/ });
     expect(within(passbook).getByText("recorded")).toBeInTheDocument();
     expect(within(passbook).getByText("0")).toBeInTheDocument();
+  });
+
+  it("opens the leaderboard from the HUD", async () => {
+    const user = userEvent.setup();
+    renderGame();
+    await screen.findByText(/Live: Penny is at her desk/);
+    await user.click(screen.getByRole("button", { name: "Leaderboard" }));
+    const sheet = screen.getByRole("dialog", { name: "Leaderboard" });
+    expect(await within(sheet).findByText(/No crew has pulled off a heist yet/)).toBeInTheDocument();
   });
 
   it("switches to live play once the bank wakes up", async () => {

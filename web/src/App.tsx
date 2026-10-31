@@ -6,6 +6,7 @@ import { Counter } from "./components/Counter";
 import { Goal, LevelPlaque, Rules, SpeechBubble } from "./components/Hud";
 import { Passbook } from "./components/Passbook";
 import { Result } from "./components/Result";
+import { Sheet } from "./components/Sheet";
 import { ArtDefs } from "./components/scene/ArtDefs";
 import { TellerWindow } from "./components/scene/TellerWindow";
 import { UnderTheHood } from "./components/UnderTheHood";
@@ -44,6 +45,7 @@ export function App({
   const backend = useBackendStatus(api, wake, timing);
   const game = useGame(content, api, backend);
   const [announcement, setAnnouncement] = useState("");
+  const [sheet, setSheet] = useState<"hood" | "leaderboard" | null>(null);
   const announce = useCallback((message: string) => setAnnouncement(message), []);
   const level = content.levels.find((l) => l.id === game.levelId) ?? content.levels[0];
   if (!level) throw new Error("content has no levels");
@@ -99,6 +101,14 @@ export function App({
               />
             </div>
             <div className="hud hud-right">
+              <div className="hud-toolbar">
+                <button type="button" aria-haspopup="dialog" onClick={() => setSheet("leaderboard")}>
+                  Leaderboard
+                </button>
+                <button type="button" aria-haspopup="dialog" onClick={() => setSheet("hood")}>
+                  Under the hood
+                </button>
+              </div>
               <Passbook
                 content={content}
                 // The deposit lands when Penny's performance ends, not before.
@@ -134,11 +144,21 @@ export function App({
           onCall={ring}
           announce={announce}
         />
-        {game.played && (
-          <UnderTheHood played={game.played} api={api} token={game.session?.token ?? null} />
-        )}
-        <Leaderboard api={api} live={backend.status === "live"} refreshKey={game.played} />
       </main>
+
+      <Sheet id="under-the-hood" title="Under the hood" open={sheet === "hood"} onClose={() => setSheet(null)}>
+        {script.revealed ? (
+          <UnderTheHood played={script.revealed} api={api} token={game.session?.token ?? null} />
+        ) : (
+          <p>
+            Ring the bell first. Then every bank tool Penny called shows up here, with the policy
+            engine&apos;s decision on each and the call&apos;s trace through the whole system.
+          </p>
+        )}
+      </Sheet>
+      <Sheet id="leaderboard" title="Leaderboard" open={sheet === "leaderboard"} onClose={() => setSheet(null)}>
+        <Leaderboard api={api} live={backend.status === "live"} />
+      </Sheet>
 
       <footer>
         <p>All characters, banks and accounts are fictional. No real money moves.</p>

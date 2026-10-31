@@ -54,28 +54,23 @@ export function ThemeToggle() {
   );
 }
 
-/** Top crews from the Kafka-fed projection. It updates a moment after each attempt. */
-export function Leaderboard({ api, live, refreshKey }: { api: ApiClient; live: boolean; refreshKey: unknown }) {
+/** Top crews from the Kafka-fed projection, fetched each time the sheet opens. */
+export function Leaderboard({ api, live }: { api: ApiClient; live: boolean }) {
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
   useEffect(() => {
     if (!live) return;
     let cancelled = false;
-    // The projection is fed asynchronously; give the consumer a moment after an attempt.
-    const timer = setTimeout(() => {
-      api
-        .leaderboard()
-        .then((e) => !cancelled && setEntries(e))
-        .catch(() => !cancelled && setEntries(null));
-    }, refreshKey ? 1_500 : 0);
+    api
+      .leaderboard()
+      .then((e) => !cancelled && setEntries(e))
+      .catch(() => !cancelled && setEntries(null));
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
-  }, [api, live, refreshKey]);
+  }, [api, live]);
 
   return (
-    <section className="panel leaderboard" aria-labelledby="leaderboard-title">
-      <h2 id="leaderboard-title">Leaderboard</h2>
+    <div className="leaderboard">
       {!live ? (
         <p>The leaderboard opens with the bank.</p>
       ) : entries === null ? (
@@ -106,6 +101,6 @@ export function Leaderboard({ api, live, refreshKey }: { api: ApiClient; live: b
           </tbody>
         </table>
       )}
-    </section>
+    </div>
   );
 }
