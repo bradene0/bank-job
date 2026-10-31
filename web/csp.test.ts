@@ -25,15 +25,18 @@ describe("Content Security Policy", () => {
   const local = directives(/add_header Content-Security-Policy "(.*)" always;/.exec(read("nginx.conf"))?.[1] ?? "");
 
   it("is the same in production and in the compose stack, apart from the API origin", () => {
-    expect(production.get("connect-src")).toBe("'self' https://bankjob-live.bradenevans.dev");
-    expect(local.get("connect-src")).toBe("'self' http://localhost:8080");
+    expect(production.get("connect-src")).toBe(
+      "'self' https://bankjob-live.bradenevans.dev https://cloudflareinsights.com",
+    );
+    expect(local.get("connect-src")).toBe("'self' http://localhost:8080 https://cloudflareinsights.com");
     production.delete("connect-src");
     local.delete("connect-src");
     expect(local).toEqual(production);
   });
 
   it("allows no inline script or style beyond the hashed ones", () => {
-    expect(production.get("script-src")).toBe("'self'");
+    // Scripts: the game's own, and Cloudflare Web Analytics' beacon.
+    expect(production.get("script-src")).toBe("'self' https://static.cloudflareinsights.com");
     expect(production.get("style-src")).not.toMatch(/unsafe/);
   });
 });
