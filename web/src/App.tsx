@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import defaultContent from "virtual:bankjob-content";
 import { ApiClient } from "./api/client";
 import { Leaderboard, StatusBadge, ThemeToggle } from "./components/Chrome";
@@ -6,12 +6,12 @@ import { Counter } from "./components/Counter";
 import { Goal, LevelPlaque, Rules, SpeechBubble } from "./components/Hud";
 import { Result } from "./components/Result";
 import { ArtDefs } from "./components/scene/ArtDefs";
-import type { Pose } from "./components/scene/Penny";
 import { TellerWindow } from "./components/scene/TellerWindow";
 import { UnderTheHood } from "./components/UnderTheHood";
 import type { GameContent } from "./content/types";
 import { DEFAULT_TIMING, useBackendStatus, type BackendTiming } from "./game/useBackendStatus";
 import { useGame } from "./game/useGame";
+import { usePennyScript, useReducedMotion } from "./game/usePennyScript";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 // Set in production (the wake Lambda); without it the game just waits for the API.
@@ -22,6 +22,8 @@ interface AppProps {
   api?: ApiClient;
   wake?: (() => Promise<void>) | null;
   timing?: BackendTiming;
+  /** How long Penny acts out each tool call; 0 skips straight to the outcome. */
+  stepMs?: number;
 }
 
 const defaultWake = WAKE_URL
@@ -30,7 +32,13 @@ const defaultWake = WAKE_URL
     }
   : null;
 
-export function App({ content = defaultContent, api: apiProp, wake = defaultWake, timing = DEFAULT_TIMING }: AppProps) {
+export function App({
+  content = defaultContent,
+  api: apiProp,
+  wake = defaultWake,
+  timing = DEFAULT_TIMING,
+  stepMs,
+}: AppProps) {
   const api = useMemo(() => apiProp ?? new ApiClient(API_URL), [apiProp]);
   const backend = useBackendStatus(api, wake, timing);
   const game = useGame(content, api, backend);
@@ -38,7 +46,15 @@ export function App({ content = defaultContent, api: apiProp, wake = defaultWake
   const announce = useCallback((message: string) => setAnnouncement(message), []);
   const level = content.levels.find((l) => l.id === game.levelId) ?? content.levels[0];
   if (!level) throw new Error("content has no levels");
-  const pose: Pose = game.playing ? "thinking" : (game.played?.outcome ?? "idle");
+  const script = usePennyScript(game.playing, game.played, stepMs);
+  const busy = game.playing || script.acting;
+  const reducedMotion = useReducedMotion();
+  const windowRef = useRef<HTMLDivElement>(null);
+  // The player is usually down at the trays when they ring: bring Penny into view for the show.
+  const ring = () => {
+    windowRef.current?.scrollIntoView?.({ block: "center", behavior: reducedMotion ? "auto" : "smooth" });
+    void game.makeTheCall();
+  };
 
   return (
     <>
@@ -71,26 +87,44 @@ export function App({ content = defaultContent, api: apiProp, wake = defaultWake
               <Goal />
               <Rules level={level} />
             </div>
-            <div className="window">
-              <TellerWindow level={level.id} controls={level.controls} pose={pose} />
+            <div className="window" ref={windowRef}>
+              <TellerWindow
+                level={level.id}
+                controls={level.controls}
+                pose={script.beat.pose}
+                tool={script.beat.tool}
+                decision={script.beat.decision}
+                reviewing={script.beat.reviewing}
+              />
             </div>
             <div className="hud hud-right">
-              {!game.playing && (game.played || game.notice) ? (
-                <Result content={content} played={game.played} notice={game.notice} onNextLevel={game.chooseLevel} />
+              {busy ? (
+                <SpeechBubble level={level.id} line={script.beat.line} />
+              ) : script.revealed || game.notice ? (
+                <Result
+                  content={content}
+                  played={script.revealed}
+                  notice={game.notice}
+                  onNextLevel={game.chooseLevel}
+                />
               ) : (
-                <SpeechBubble level={level.id} thinking={game.playing} />
+                <SpeechBubble level={level.id} />
               )}
+              {/* Each step of Penny's performance, read out politely as it happens. */}
+              <p className="visually-hidden" role="status">
+                {busy ? `Penny: ${script.beat.line}` : ""}
+              </p>
             </div>
           </div>
         </section>
         <Counter
           content={content}
           slots={game.slots}
-          busy={game.playing}
+          busy={busy}
           live={backend.status === "live"}
           onPlace={game.placeTile}
           onClear={game.clearSlot}
-          onCall={() => void game.makeTheCall()}
+          onCall={ring}
           announce={announce}
         />
         {game.played && (

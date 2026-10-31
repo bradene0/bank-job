@@ -7,12 +7,12 @@ import { fakeBackend, json, replayOf, type FakeOptions } from "./test/fakeBacken
 
 const FAST = { wakingPollMs: 50, wakeWindowMs: 10_000, asleepPollMs: 50 };
 
-function renderGame(options: FakeOptions = {}) {
+function renderGame(options: FakeOptions = {}, stepMs = 0) {
   const backend = fakeBackend(options);
   // Replay files are fetched from the page's own origin, like the static site serves them.
   vi.stubGlobal("fetch", backend.fetchImpl);
   const api = new ApiClient("http://api.test", backend.fetchImpl);
-  render(<App api={api} wake={null} timing={FAST} />);
+  render(<App api={api} wake={null} timing={FAST} stepMs={stepMs} />);
   return backend;
 }
 
@@ -79,6 +79,23 @@ describe("App", () => {
     const calls = screen.getByRole("list", { name: "Tool calls" });
     expect(calls.querySelectorAll('li[data-decision="allow"]')).toHaveLength(2);
     expect(within(calls).getByText("transfer_funds")).toBeInTheDocument();
+  });
+
+  it("acts out each tool call before revealing the result", async () => {
+    const user = userEvent.setup();
+    renderGame({}, 40);
+    await screen.findByText(/Live: Penny is at her desk/);
+    await buildCon(user, WINNING_CON);
+    await user.click(screen.getByRole("button", { name: "Ring the bell" }));
+
+    // lookup_account, then transfer_funds, each in the bubble and read out as a status.
+    expect(await screen.findByText("Let me look up that account…", { selector: "blockquote" })).toBeInTheDocument();
+    expect(await screen.findByText("Keying in the wire…", { selector: "blockquote" })).toBeInTheDocument();
+    expect(screen.getByText("Penny: Keying in the wire…")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ring the bell" })).toBeDisabled();
+    expect(screen.queryByRole("heading", { name: "The wire went through." })).not.toBeInTheDocument();
+
+    expect(await screen.findByRole("heading", { name: "The wire went through." })).toHaveFocus();
   });
 
   it("places and removes tiles with the keyboard alone", async () => {

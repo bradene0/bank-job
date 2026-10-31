@@ -93,11 +93,11 @@ const GREETINGS: Record<number, string> = {
   5: "Welcome to the vault desk. A second reviewer double-checks everything I do.",
 };
 
-/** Penny's speech bubble before a call, and while she works on one. */
-export function SpeechBubble({ level, thinking }: { level: number; thinking: boolean }) {
+/** Penny's speech bubble: her greeting, or what she is doing while she works on a call. */
+export function SpeechBubble({ level, line }: { level: number; line?: string }) {
   return (
     <figure className="bubble">
-      <blockquote>{thinking ? "One moment, let me look into that…" : (GREETINGS[level] ?? GREETINGS[1])}</blockquote>
+      <blockquote>{line || (GREETINGS[level] ?? GREETINGS[1])}</blockquote>
       <figcaption className="visually-hidden">Penny, teller</figcaption>
     </figure>
   );
