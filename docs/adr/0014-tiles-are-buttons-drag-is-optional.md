@@ -34,3 +34,22 @@ Library options for drag-and-drop:
   announcement such as "Branch Manager placed in Who you claim to be. 1 of 4 slots filled."
 - Playwright covers all three paths: mouse drag (desktop), keyboard only, and taps on an
   emulated phone, each winning Level 1 under the two-minute target; axe runs on every screen.
+
+## Amendment (2026-10-30): drag first, on the teller scene
+The game became a scene at Penny's window, where tiles are props on a counter. Dragging a prop to
+its spot is now the interaction the game presents first; the decision above is unchanged
+underneath: every tile is still a toggle button, and nothing requires a drag.
+
+- **Lighter pickup.** dnd-kit's default activation (a 200 ms hold or 5 px, aborted by a fast
+  move) felt sticky. A mouse now picks a prop up after 4 px; a finger after a 150 ms hold with
+  8 px tolerance, so a swipe across the trays still scrolls the page. A press without movement
+  stays a click, so tapping still places a prop.
+- **Feedback.** While a prop is lifted, the spot that accepts it lights up ("Drop it here"). The
+  lift uses `rotate` and `box-shadow`, because dnd-kit owns `transform`, `translate` and `scale`
+  on the dragged element.
+- **CSP.** `@dnd-kit/dom` injects three `<style>` blocks while dragging (the dragged element's
+  position, the grab cursor, no text selection). The production policy (`style-src 'self'`)
+  blocked them, which broke the drag feedback in production without failing any test, because the
+  compose stack served no CSP. The policy now allows exactly those three blocks by hash, the
+  compose nginx serves the same policy, and every end-to-end test fails on a CSP violation. A
+  dnd-kit upgrade that changes the blocks fails CI until the hashes are updated.

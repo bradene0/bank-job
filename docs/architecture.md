@@ -75,10 +75,11 @@ bankjob-live.bradenevans.dev  (Cloudflare edge → tunnel → cloudflared → Tr
    velocity rule reads, ADR-0013), the leaderboard and the audit log. If Kafka is down the
    game keeps working and the events wait in the outbox.
 6. game-api decides the outcome from the ledger, filters Penny's reply, and returns the
-   outcome, the reply, the tool-call timeline and the trace ID. The UI's "Under the hood"
-   panel renders the trace. If the agent is down or the model budget is spent, the
-   response is a 503 with `replay: true`, the nerve is refunded, and the UI uses replay
-   mode.
+   outcome, the reply, the tool-call timeline and the trace ID. The UI plays the timeline back
+   as Penny's performance at her window (one pose per tool call, then the outcome), and its
+   "Under the hood" dialog renders the timeline and the trace. If the agent is down or the
+   model budget is spent, the response is a 503 with `replay: true`, the nerve is refunded,
+   and the UI uses replay mode.
 
 Each attempt is **single-turn**: one composed message, one teller run (which may include
 several tool calls). This keeps the attack space enumerable (864 combos per level) and
