@@ -1,0 +1,284 @@
+/* Design tokens. Dark (evening in the lobby) is the default; [data-theme="light"] is daylight.
+   Every text/background pair below meets WCAG 2.2 AA (4.5:1 for text, 3:1 for UI boundaries and
+   focus rings). The art inside Penny's window keeps its own colors in both themes. */
+:root {
+  --bg: #15221e;
+  --surface: #1b2b26;
+  --surface-raised: #22352f;
+  --border: #a68a3c;
+  --text: #f3ecd9;
+  --text-muted: #c9b98f;
+  --brass: #e2b857;
+  --brass-strong: #f3d98c;
+  --on-brass: #1a1406;
+  --won: #6fd39b;
+  --blocked: #ff9b8a;
+  --refused: #c9b6ff;
+  --allow: #6fd39b;
+  --deny: #ff9b8a;
+  --focus: #7cc4ff;
+  --svc-game-api: #e2b857;
+  --svc-agent: #7cc4ff;
+
+  /* The scene */
+  --wall-top: #1b2b26;
+  --wall-bottom: #101a17;
+  --pillar-light: #e9e1cf;
+  --pillar-dark: #b9b19f;
+  --pillar-groove: #8f8775;
+  --hud-bg: rgb(13 22 19 / 92%);
+  --hud-border: #8a6a24;
+  --paper: #f6f1e4;
+  --ink: #1b2b26;
+  --wood-hi: #6a3c24;
+  --wood: #4e2a18;
+  --wood-lo: #3b1f12;
+  --on-wood: #f0dcb4;
+  --brass-rail: #c9a24a;
+
+  --radius: 10px;
+  --gap: 1rem;
+  --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --display: Limelight, Georgia, "Times New Roman", serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #efe9da;
+  --surface: #fffdf6;
+  --surface-raised: #f7f1e2;
+  --border: #7a6a3a;
+  --text: #1c1a16;
+  --text-muted: #4f4a40;
+  --brass: #8a6410;
+  --brass-strong: #6f500b;
+  --on-brass: #ffffff;
+  --won: #1d6b3f;
+  --blocked: #a32f1d;
+  --refused: #5a3fa8;
+  --allow: #1d6b3f;
+  --deny: #a32f1d;
+  --focus: #0b5cad;
+  --svc-game-api: #8a6410;
+  --svc-agent: #0b5cad;
+
+  --wall-top: #dfe8df;
+  --wall-bottom: #c3d1c6;
+  --hud-bg: rgb(255 252 243 / 95%);
+  --hud-border: #8a6a24;
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Keep focused or scrolled-to elements clear of the sticky call bar (WCAG 2.4.11). */
+html {
+  scroll-padding-bottom: 6rem;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+}
+
+h3 {
+  font-size: 1rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+a {
+  color: var(--brass-strong);
+}
+
+code,
+pre {
+  font-family: var(--mono);
+  font-size: 0.875rem;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Shared gradients for the scene's SVGs: present, but takes no space. */
+.art-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  background: var(--brass);
+  color: var(--on-brass);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  z-index: 10;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  min-height: 44px; /* comfortable touch target (WCAG 2.5.8 asks for at least 24px) */
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  padding: 0.5rem 0.9rem;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+button.primary {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: var(--on-brass);
+  font-weight: 600;
+  font-size: 1.125rem;
+  padding: 0.75rem 1.75rem;
+}
+
+button.primary:not(:disabled):hover {
+  background: var(--brass-strong);
+}
+
+button.secondary {
+  border-color: var(--brass);
+}
+
+.hint {
+  color: var(--text-muted);
+  margin: 0.25rem 0 0.75rem;
+}
+
+/* Top bar: the game's name, the bank's status and the theme. */
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem max(1rem, calc((100% - 88rem) / 2));
+  background: var(--surface);
+  border-bottom: 2px solid var(--hud-border);
+}
+
+.topbar-brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.75rem;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.75rem;
+  color: var(--brass-strong);
+}
+
+.tagline {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.topbar-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.status-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+}
+
+.status[data-status="live"] .status-dot {
+  background: var(--won);
+  border-color: var(--won);
+}
+
+.status[data-status="waking"] .status-dot {
+  border-color: var(--brass);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    background: var(--brass);
+  }
+}
+
+footer {
+  padding: 1.5rem max(1rem, calc((100% - 88rem) / 2)) 2rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+/* Motion is decoration here: with reduced motion Penny still changes pose, just without moving. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

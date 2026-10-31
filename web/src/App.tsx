@@ -2,8 +2,12 @@ import { useCallback, useMemo, useState } from "react";
 import defaultContent from "virtual:bankjob-content";
 import { ApiClient } from "./api/client";
 import { Board } from "./components/Board";
-import { Briefing, Leaderboard, LevelPicker, StatusBadge, ThemeToggle } from "./components/Chrome";
+import { Leaderboard, StatusBadge, ThemeToggle } from "./components/Chrome";
+import { Goal, LevelPlaque, Rules, SpeechBubble } from "./components/Hud";
 import { Result } from "./components/Result";
+import { ArtDefs } from "./components/scene/ArtDefs";
+import type { Pose } from "./components/scene/Penny";
+import { TellerWindow } from "./components/scene/TellerWindow";
 import { UnderTheHood } from "./components/UnderTheHood";
 import type { GameContent } from "./content/types";
 import { filledCount } from "./game/state";
@@ -34,33 +38,53 @@ export function App({ content = defaultContent, api: apiProp, wake = defaultWake
   const [announcement, setAnnouncement] = useState("");
   const announce = useCallback((message: string) => setAnnouncement(message), []);
   const ready = filledCount(game.slots) === 4;
+  const level = content.levels.find((l) => l.id === game.levelId) ?? content.levels[0];
+  if (!level) throw new Error("content has no levels");
+  const pose: Pose = game.playing ? "thinking" : (game.played?.outcome ?? "idle");
 
   return (
     <>
+      <ArtDefs />
       <a className="skip-link" href="#play">
         Skip to the game
       </a>
-      <header className="masthead">
-        <div>
-          <p className="brand">Brassvale Savings &amp; Trust</p>
+      <header className="topbar">
+        <div className="topbar-brand">
           <h1>Bank Job</h1>
-          <p className="tagline">Trusted since 1911. Automated since Tuesday.</p>
+          <p className="tagline">Brassvale Savings &amp; Trust</p>
         </div>
-        <div className="masthead-tools">
+        <div className="topbar-tools">
           <StatusBadge status={backend.status} />
           <ThemeToggle />
         </div>
       </header>
 
       <main id="play" tabIndex={-1}>
-        <LevelPicker
-          content={content}
-          levelId={game.levelId}
-          nerve={game.nerve}
-          beaten={game.beaten}
-          onChoose={game.chooseLevel}
-        />
-        <Briefing content={content} levelId={game.levelId} />
+        <section className="scene" aria-label="Penny's teller window">
+          <div className="scene-inner">
+            <div className="hud hud-left">
+              <LevelPlaque
+                content={content}
+                level={level}
+                nerve={game.nerve}
+                beaten={game.beaten}
+                onChoose={game.chooseLevel}
+              />
+              <Goal />
+              <Rules level={level} />
+            </div>
+            <div className="window">
+              <TellerWindow level={level.id} controls={level.controls} pose={pose} />
+            </div>
+            <div className="hud hud-right">
+              {!game.playing && (game.played || game.notice) ? (
+                <Result content={content} played={game.played} notice={game.notice} onNextLevel={game.chooseLevel} />
+              ) : (
+                <SpeechBubble level={level.id} thinking={game.playing} />
+              )}
+            </div>
+          </div>
+        </section>
         <Board
           content={content}
           slots={game.slots}
@@ -84,7 +108,6 @@ export function App({ content = defaultContent, api: apiProp, wake = defaultWake
             {backend.status === "live" ? "" : "The bank is closed, so you'll get a recorded result."}
           </p>
         </div>
-        <Result content={content} played={game.played} notice={game.notice} onNextLevel={game.chooseLevel} />
         {game.played && (
           <UnderTheHood played={game.played} api={api} token={game.session?.token ?? null} />
         )}

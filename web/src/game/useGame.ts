@@ -118,8 +118,10 @@ export function useGame(
   );
   const clearSlot = useCallback((key: SlotKey) => setSlots((current) => clear(current, key)), []);
 
+  // A new level is a new visit to the window: Penny greets the player again.
   const chooseLevel = useCallback((id: number) => {
     setLevelId(id);
+    setPlayed(null);
     setNotice(null);
   }, []);
 

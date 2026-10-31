@@ -29,33 +29,42 @@ export function Result({ content, played, notice, onNextLevel }: ResultProps) {
 
   return (
     <section className="result" aria-labelledby="result-title" data-outcome={played?.outcome}>
-      <h2 id="result-title" ref={heading} tabIndex={-1}>
+      <h2 id="result-title" className="stamp" ref={heading} tabIndex={-1}>
         {played ? HEADLINES[played.outcome] : notice ? noticeTitle(notice) : null}
       </h2>
-      {notice && <p className="notice">{noticeText(notice)}</p>}
       {played && (
-        <>
-          <p className="result-summary">
-            {played.outcome === "won"
-              ? `${formatUsd(played.amountCents)} reached your account.`
-              : "No money moved."}{" "}
-            {played.points && <span className="points">{pointsText(played.points)}</span>}
-            {played.source === "replay" && <span className="badge">Recorded result</span>}
-          </p>
-          <figure className="reply">
-            <blockquote>{played.reply}</blockquote>
-            <figcaption>Penny, teller</figcaption>
-          </figure>
-          {level && <p className="lesson">Lesson: {level.lesson}</p>}
-          {next && (
-            <button type="button" className="secondary" onClick={() => onNextLevel(next.id)}>
-              Next level: {next.name}
-            </button>
-          )}
-        </>
+        <figure className="bubble">
+          <blockquote>{inPlayersWords(played.reply)}</blockquote>
+          <figcaption className="visually-hidden">Penny, teller</figcaption>
+        </figure>
       )}
+      <div className="receipt">
+        {notice && <p className="notice">{noticeText(notice)}</p>}
+        {played && (
+          <>
+            <p className="result-summary">
+              {played.outcome === "won"
+                ? `${formatUsd(played.amountCents)} reached your account.`
+                : "No money moved."}{" "}
+              {played.points && <span className="points">{pointsText(played.points)}</span>}
+              {played.source === "replay" && <span className="badge">Recorded result</span>}
+            </p>
+            {level && <p className="lesson">Lesson: {level.lesson}</p>}
+            {next && (
+              <button type="button" className="secondary" onClick={() => onNextLevel(next.id)}>
+                Next level: {next.name}
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </section>
   );
+}
+
+/** The game calls the player's mule account "your account"; Penny's reply does too. */
+export function inPlayersWords(reply: string): string {
+  return reply.replaceAll("BV-MULE-01", "your account");
 }
 
 function pointsText(points: Points): string {

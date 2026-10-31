@@ -1,0 +1,278 @@
+/* Penny and the level props. Poses are data attributes set by React; everything that moves is
+   here, so prefers-reduced-motion (base.css) stops the motion and keeps the poses. SVG transforms
+   use view-box coordinates (the window's 600 x 560 box). */
+.teller-window .arm,
+.teller-window .penny-head,
+.teller-window .penny-body,
+.teller-window .needle {
+  transform-box: view-box;
+}
+
+.penny .arm,
+.penny .penny-head,
+.penny .pupils {
+  transition: transform 260ms cubic-bezier(0.3, 1.4, 0.6, 1);
+}
+
+.penny .arm-left {
+  transform-origin: 178px 410px;
+}
+
+.penny .arm-right {
+  transform-origin: 422px 410px;
+}
+
+.penny .penny-head {
+  transform-origin: 300px 380px;
+}
+
+/* Idle: a gentle bob and a blink every few seconds. */
+.penny .penny-body {
+  animation: penny-bob 3.6s ease-in-out infinite;
+}
+
+.penny .eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: penny-blink 5s infinite;
+}
+
+@keyframes penny-bob {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes penny-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  97% {
+    transform: scaleY(0.1);
+  }
+}
+
+/* The lamp on her antenna: teal when calm, red when a control says no, gold on a win. */
+.penny .lamp {
+  fill: #7fe0d0;
+  transition: fill 200ms;
+}
+
+.penny .lamp-glow {
+  opacity: 0.6;
+}
+
+.penny[data-decision="deny"] .lamp,
+.penny[data-pose="blocked"] .lamp {
+  fill: #ff6b5a;
+}
+
+.penny[data-pose="won"] .lamp {
+  fill: #ffd56a;
+}
+
+.penny[data-pose="thinking"] .lamp,
+.penny[data-pose="thinking"] .lamp-glow {
+  animation: lamp-pulse 0.7s ease-in-out infinite alternate;
+}
+
+.penny[data-pose="blocked"] .lamp,
+.penny[data-pose="blocked"] .lamp-glow {
+  animation: lamp-pulse 0.35s steps(2) infinite alternate;
+}
+
+@keyframes lamp-pulse {
+  to {
+    opacity: 0.25;
+  }
+}
+
+/* Poses */
+.penny[data-pose="thinking"] .penny-head {
+  transform: rotate(4deg);
+}
+
+.penny[data-pose="thinking"] .pupils {
+  transform: translate(3px, -5px);
+}
+
+.penny:is(
+    [data-pose="lookup"],
+    [data-pose="balance"],
+    [data-pose="verify"],
+    [data-pose="document"],
+    [data-pose="phone"],
+    [data-pose="transfer"],
+    [data-pose="flag"]
+  )
+  .arm-right {
+  transform: rotate(-140deg);
+}
+
+.penny:is(
+    [data-pose="lookup"],
+    [data-pose="balance"],
+    [data-pose="verify"],
+    [data-pose="document"],
+    [data-pose="phone"],
+    [data-pose="transfer"],
+    [data-pose="flag"]
+  )
+  .pupils {
+  transform: translate(5px, -2px);
+}
+
+.penny[data-pose="transfer"] .arm-left {
+  transform: rotate(16deg);
+}
+
+.penny .held .stamp {
+  animation: stamp 0.45s ease-in infinite;
+}
+
+@keyframes stamp {
+  50% {
+    transform: translateY(8px);
+  }
+}
+
+.penny[data-pose="won"] .arm-right {
+  transform: rotate(-150deg);
+}
+
+.penny[data-pose="won"] .arm-left {
+  transform: rotate(150deg);
+}
+
+.penny[data-pose="refused"] .arm-right {
+  transform: rotate(-115deg);
+}
+
+.penny[data-pose="refused"] .penny-head {
+  transform: rotate(-6deg);
+}
+
+.penny[data-pose="blocked"] .arm-left {
+  transform: rotate(10deg);
+}
+
+.penny[data-pose="blocked"] .arm-right {
+  transform: rotate(-10deg);
+}
+
+.penny[data-pose="blocked"] .penny-head {
+  animation: head-shake 0.5s ease-in-out 2;
+}
+
+@keyframes head-shake {
+  25% {
+    transform: rotate(-5deg);
+  }
+  75% {
+    transform: rotate(5deg);
+  }
+}
+
+.penny .thought circle {
+  animation: thought 1.2s ease-in-out infinite;
+}
+
+.penny .thought circle:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.penny .thought circle:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes thought {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.penny .coins circle {
+  transform-box: fill-box;
+  animation: coin-rise 1.6s ease-out infinite;
+}
+
+.penny .coins circle:nth-child(2) {
+  animation-delay: 0.35s;
+}
+
+.penny .coins circle:nth-child(3) {
+  animation-delay: 0.7s;
+}
+
+@keyframes coin-rise {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-90px);
+    opacity: 0;
+  }
+}
+
+/* Level props light up when the call they guard runs. */
+.scanner-screen {
+  fill: #7fe0d0;
+  opacity: 0.3;
+  transition: opacity 200ms;
+}
+
+.prop-scanner[data-active] .scanner-screen {
+  opacity: 1;
+  animation: lamp-pulse 0.3s ease-in-out infinite alternate;
+}
+
+.phone-screen {
+  fill: #3f6b62;
+}
+
+.prop-phone[data-active] .phone-screen {
+  fill: #ffd56a;
+}
+
+.prop-phone[data-active] {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: buzz 0.12s linear infinite alternate;
+}
+
+@keyframes buzz {
+  from {
+    transform: translateX(-1.5px);
+  }
+  to {
+    transform: translateX(1.5px);
+  }
+}
+
+.guard-eye {
+  fill: #3f6b62;
+  transition: fill 200ms;
+}
+
+.prop-guard[data-active] .guard-eye {
+  fill: #ff6b5a;
+}
+
+.prop-gauge .needle {
+  transform-origin: 170px 156px;
+  transition: transform 400ms ease-out;
+}
+
+.prop-gauge[data-active] .needle {
+  transform: rotate(80deg);
+}
+
+.prop-limit[data-active] rect {
+  stroke: #ff9b8a;
+}

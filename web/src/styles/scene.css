@@ -1,0 +1,290 @@
+/* The lobby: Penny's window in the middle, brass HUD plaques either side. On a phone the HUD
+   stacks above the window, so the window's ledge always meets the counter below it. */
+.scene {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(var(--wall-top), var(--wall-bottom));
+}
+
+.scene-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: 1rem 1rem 0;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "left"
+    "right"
+    "window";
+}
+
+.hud-left {
+  grid-area: left;
+}
+
+.hud-right {
+  grid-area: right;
+}
+
+.window {
+  grid-area: window;
+  align-self: end;
+  min-width: 0;
+}
+
+.hud {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.teller-window {
+  display: block;
+  width: 100%;
+  max-width: 37.5rem;
+  height: auto;
+  margin: 0 auto;
+}
+
+.art-mono {
+  font-family: var(--mono);
+}
+
+.art-display {
+  font-family: var(--display);
+}
+
+/* Fluted marble pillars at the edges of a wide lobby. */
+@media (min-width: 64rem) {
+  .scene::before,
+  .scene::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6.5rem;
+    opacity: 0.35;
+    background:
+      linear-gradient(#e4c46f, #8a6a24) top / 100% 1.6rem no-repeat,
+      repeating-linear-gradient(
+        90deg,
+        var(--pillar-dark) 0 0.7rem,
+        var(--pillar-light) 0.7rem 1.4rem,
+        var(--pillar-groove) 1.4rem 1.55rem
+      );
+  }
+
+  .scene::before {
+    left: max(1rem, calc(50% - 41rem));
+  }
+
+  .scene::after {
+    right: max(1rem, calc(50% - 41rem));
+  }
+}
+
+@media (min-width: 48rem) {
+  .scene-inner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "left right"
+      "window window";
+  }
+}
+
+@media (min-width: 64rem) {
+  .scene-inner {
+    padding: 1.5rem 1.5rem 0;
+    gap: 1.5rem;
+    grid-template-columns: minmax(15rem, 1fr) minmax(0, 37.5rem) minmax(15rem, 1fr);
+    grid-template-areas: "left window right";
+  }
+
+  .hud-left {
+    align-self: start;
+  }
+
+  .hud-right {
+    justify-content: center;
+    padding-bottom: 3rem;
+  }
+}
+
+/* HUD plaques */
+.hud-card {
+  background: var(--hud-bg);
+  color: var(--text);
+  border: 1px solid var(--hud-border);
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+}
+
+.plaque h2 {
+  margin: 0.1rem 0 0.4rem;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.75rem;
+  color: var(--brass-strong);
+}
+
+.plaque-kicker {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.nerve {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nerve-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.coins {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.coin {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #f3d98c, #c9a24a 60%, #8a6a24);
+  border: 1px solid #8a6a24;
+}
+
+.coin[data-spent] {
+  background: transparent;
+  border: 2px solid var(--text-muted);
+}
+
+.worth {
+  margin: 0.4rem 0 0.6rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.level-tokens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.level-token {
+  min-width: 44px;
+  padding: 0;
+  border-radius: 50%;
+  font-weight: 600;
+  background: var(--surface-raised);
+  border: 2px solid var(--border);
+  position: relative;
+}
+
+.level-token[aria-current="step"] {
+  background: var(--brass);
+  border-color: var(--brass-strong);
+  color: var(--on-brass);
+}
+
+/* A cracked level gets a small brass tick in its corner. */
+.level-token[data-cracked]::after {
+  content: "✓";
+  position: absolute;
+  right: -0.35rem;
+  top: -0.35rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  line-height: 1.1rem;
+  background: var(--won);
+  color: #10231a;
+}
+
+.hud-note {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
+}
+
+.rules summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.rules ul {
+  margin: 0.2rem 0 0.2rem;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+}
+
+.rules li + li {
+  margin-top: 0.2rem;
+}
+
+/* Penny's speech bubble. Its tail points down at her on a phone, and left at her on a desktop. */
+.bubble {
+  position: relative;
+  margin: 0 0 0.9rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 16px;
+  padding: 0.8rem 1.1rem;
+  font-size: 1.05rem;
+  line-height: 1.45;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
+}
+
+.bubble blockquote {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -0.55rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  background: var(--paper);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+@media (min-width: 64rem) {
+  .bubble::after {
+    left: -0.55rem;
+    top: 1.6rem;
+    bottom: auto;
+    transform: rotate(45deg);
+  }
+}
+
+/* What Penny is doing right now, under her window. */
+.penny-caption {
+  margin: 0;
+  min-height: 1.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}

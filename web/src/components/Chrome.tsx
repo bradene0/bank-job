@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ApiClient } from "../api/client";
 import type { LeaderboardEntry } from "../api/types";
-import type { GameContent } from "../content/types";
 import { formatUsd } from "../game/state";
 import type { BackendStatus } from "../game/useBackendStatus";
 
@@ -55,78 +54,6 @@ export function ThemeToggle() {
   );
 }
 
-export function LevelPicker({
-  content,
-  levelId,
-  nerve,
-  beaten,
-  onChoose,
-}: {
-  content: GameContent;
-  levelId: number;
-  nerve: Record<string, number>;
-  beaten: number[];
-  onChoose: (id: number) => void;
-}) {
-  return (
-    <nav className="levels" aria-label="Levels">
-      <ol>
-        {content.levels.map((level) => {
-          const left = nerve[String(level.id)] ?? level.nerve;
-          return (
-            <li key={level.id}>
-              {/* Plain text separated by spaces: the accessible name is the visible text (WCAG
-                  2.5.3), computed the same way by every browser. */}
-              <button
-                type="button"
-                aria-current={level.id === levelId ? "step" : undefined}
-                onClick={() => onChoose(level.id)}
-              >
-                <span className="level-number">Level {level.id}</span>{" "}
-                <span className="level-name">{level.name}</span>{" "}
-                <span className="level-meta">
-                  {left} of {level.nerve} nerve left
-                  {beaten.includes(level.id) && (
-                    <>
-                      {" "}
-                      <span className="beaten">· beaten</span>
-                    </>
-                  )}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-}
-
-export function Briefing({ content, levelId }: { content: GameContent; levelId: number }) {
-  const level = content.levels.find((l) => l.id === levelId);
-  if (!level) return null;
-  return (
-    <section className="briefing" aria-labelledby="briefing-title">
-      <h2 id="briefing-title">
-        Level {level.id}: {level.name}
-      </h2>
-      <p>
-        <strong>Goal:</strong> get any money into your account.
-      </p>
-      <p>
-        Crack a level for its points; +10 for every nerve you have left. This level is worth{" "}
-        {level.points}.
-      </p>
-      <h3>What stands in your way</h3>
-      <ul>
-        {level.controls.map((control) => (
-          <li key={control.key}>{control.text}</li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
 /** Top crews from the Kafka-fed projection. It updates a moment after each attempt. */
 export function Leaderboard({ api, live, refreshKey }: { api: ApiClient; live: boolean; refreshKey: unknown }) {
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
@@ -147,7 +74,7 @@ export function Leaderboard({ api, live, refreshKey }: { api: ApiClient; live: b
   }, [api, live, refreshKey]);
 
   return (
-    <section className="leaderboard" aria-labelledby="leaderboard-title">
+    <section className="panel leaderboard" aria-labelledby="leaderboard-title">
       <h2 id="leaderboard-title">Leaderboard</h2>
       {!live ? (
         <p>The leaderboard opens with the bank.</p>

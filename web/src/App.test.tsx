@@ -33,6 +33,20 @@ describe("App", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Bank Job" })).toBeInTheDocument();
   });
 
+  it("greets the player at Penny's window and shows the level's controls", async () => {
+    const user = userEvent.setup();
+    renderGame();
+    expect(screen.getByRole("img", { name: /Penny, Brassvale's AI teller/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Front Desk" })).toBeInTheDocument();
+    expect(screen.getByText(/welcome to Brassvale/)).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "8 of 8 nerve left" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^Level 3: Policy Engine/ }));
+    expect(screen.getByRole("heading", { level: 2, name: "Policy Engine" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Level 3: Policy Engine/ })).toHaveAttribute("aria-current", "step");
+    expect(screen.getByText("The caller must verify as the account's owner")).toBeInTheDocument();
+  });
+
   it("plays a live attempt: tiles in, tile ids out, the ledger's outcome back", async () => {
     const user = userEvent.setup();
     const backend = renderGame();
@@ -50,12 +64,16 @@ describe("App", () => {
     expect(screen.getByText("$200.00 reached your account.")).toBeInTheDocument();
     // Penny's words are text, never markup.
     expect(screen.getByText(/<b>Have a lovely day!<\/b>/)).toBeInTheDocument();
+    // The game calls the mule "your account"; only the raw data under the hood has its number.
+    const resultRegion = screen.getByRole("region", { name: "The wire went through." });
+    expect(within(resultRegion).getByText(/transferred \$200\.00 to your account/)).toBeInTheDocument();
+    expect(resultRegion).not.toHaveTextContent("BV-MULE-01");
     const attempt = backend.requests.find((r) => r.url.endsWith("/v1/attempts"));
     expect(JSON.parse(attempt?.body ?? "null")).toEqual({
       level: 1,
       tiles: { persona: "p1", pretext: "x1", technique: "t3", payload: "y1" },
     });
-    expect(screen.getByRole("button", { name: "Level 1 Front Desk 7 of 8 nerve left · beaten" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Level 1: Front Desk, 7 of 8 nerve left, cracked" })).toBeInTheDocument();
 
     await user.click(screen.getByText("Under the hood"));
     const calls = screen.getByRole("list", { name: "Tool calls" });
@@ -104,13 +122,13 @@ describe("App", () => {
     await buildCon(user, WINNING_CON);
     await user.click(screen.getByRole("button", { name: "Make the call" }));
     expect(await screen.findByRole("heading", { name: "No recording of that call yet." })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Level 1 Front Desk 8 of 8 nerve left" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Level 1: Front Desk, 8 of 8 nerve left" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^Bank Examiner/ }));
     await user.click(screen.getByRole("button", { name: "Make the call" }));
     expect(await screen.findByRole("heading", { name: "The wire went through." })).toBeInTheDocument();
     expect(screen.getByText("Recorded result")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Level 1 Front Desk 7 of 8 nerve left · beaten" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Level 1: Front Desk, 7 of 8 nerve left, cracked" })).toBeInTheDocument();
   });
 
   it("switches to live play once the bank wakes up", async () => {

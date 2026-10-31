@@ -1,0 +1,234 @@
+/* The result: the outcome as a rubber stamp, Penny's reply in her bubble, then the receipt. */
+.result .stamp {
+  display: inline-block;
+  margin: 0 0 0.9rem;
+  padding: 0.3rem 0.8rem;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.4rem;
+  background: var(--hud-bg);
+  border: 3px solid currentcolor;
+  border-radius: 8px;
+  transform: rotate(-2deg);
+}
+
+.result[data-outcome="won"] .stamp {
+  color: var(--won);
+}
+
+.result[data-outcome="blocked"] .stamp {
+  color: var(--blocked);
+}
+
+.result[data-outcome="refused"] .stamp {
+  color: var(--refused);
+}
+
+.result:not([data-outcome]) .stamp {
+  color: var(--brass-strong);
+}
+
+.result .stamp:focus {
+  outline: none;
+}
+
+.result .stamp:focus-visible {
+  outline: 3px solid var(--focus);
+}
+
+.receipt {
+  background: var(--hud-bg);
+  color: var(--text);
+  border: 1px solid var(--hud-border);
+  border-radius: 12px;
+  padding: 0.6rem 1rem;
+}
+
+.receipt p {
+  margin: 0.4rem 0;
+}
+
+.points {
+  font-weight: 600;
+  color: var(--brass-strong);
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.lesson {
+  color: var(--text-muted);
+}
+
+/* Panels below the counter */
+.panel {
+  max-width: 88rem;
+  margin: var(--gap) auto 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+/* Under the hood */
+.under-the-hood {
+  max-width: 88rem;
+  margin: var(--gap) auto 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 0.75rem 1rem;
+}
+
+.under-the-hood > summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1.125rem;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.under-the-hood h3 {
+  margin-top: 1rem;
+}
+
+.tool-calls {
+  margin: 0;
+  padding-left: 1.5rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.tool-name {
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.decision {
+  font-weight: 700;
+}
+
+.decision-allow {
+  color: var(--allow);
+}
+
+.decision-deny {
+  color: var(--deny);
+}
+
+.reason-code {
+  padding: 0 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.reason {
+  display: block;
+  color: var(--text-muted);
+}
+
+.tool-args summary {
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.tool-args pre {
+  overflow-x: auto;
+  background: var(--surface-raised);
+  padding: 0.5rem;
+  border-radius: 6px;
+}
+
+.trace-id code {
+  overflow-wrap: anywhere;
+}
+
+.spans {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+
+.span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 0.75rem;
+  padding: 0.2rem 0 0.2rem calc(var(--depth, 0) * 0.6rem);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+  font-size: 0.875rem;
+}
+
+.span-name {
+  overflow-wrap: anywhere;
+}
+
+.span-service {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.span-time {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.span-track {
+  grid-column: 1 / -1;
+  position: relative;
+  height: 6px;
+  margin-top: 2px;
+  background: color-mix(in srgb, var(--border) 25%, transparent);
+  border-radius: 3px;
+}
+
+.span-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+  background: var(--svc-game-api);
+}
+
+.span[data-service="agent"] .span-bar {
+  background: var(--svc-agent);
+}
+
+.span[data-error="true"] .span-bar {
+  background: var(--deny);
+}
+
+.toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* Leaderboard */
+.leaderboard table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard th,
+.leaderboard td {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.note {
+  border-left: 4px solid var(--border);
+  padding-left: 0.75rem;
+  color: var(--text-muted);
+}
+
