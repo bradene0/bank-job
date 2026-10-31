@@ -139,6 +139,31 @@ jobs:
               --json databaseId -q '.[0].databaseId')"
           fi
           gh run download "${RUN_ID}" -R "${GITHUB_REPOSITORY}" -n eval-matrix-stub -D eval
+      - name: Overlay the latest full live-model run, if it played this content
+        # A real model's recordings beat the scripted teller's. Use the newest successful live
+        # run only when it played the whole matrix (no sample) on the same content as this
+        # commit; its files replace the stub ones combo by combo, so a combo the live run could
+        # not finish keeps its stub recording.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          LIVE_RUN="$(gh run list -R "${GITHUB_REPOSITORY}" -w "Evals (live)" -b main -s success \
+            -L 20 --json databaseId -q '.[].databaseId' | head -n 20)"
+          for id in ${LIVE_RUN}; do
+            rm -rf live
+            gh run download "${id}" -R "${GITHUB_REPOSITORY}" -n eval-matrix-live -D live 2>/dev/null || continue
+            summary=live/out/summary.json
+            [ -f "${summary}" ] || continue
+            if jq -e --arg hash "$(jq -r .contentHash eval/summary.json)" \
+                '.mode == "live" and .sample == null and .contentHash == $hash' "${summary}" >/dev/null; then
+              count="$(find live/out/replay -name '*.json' | wc -l | tr -d ' ')"
+              cp -R live/out/replay/. eval/replay/
+              cp "${summary}" eval/summary.json
+              echo "Replays: live-model run ${id} (${count} files) over the stub recordings" >> "${GITHUB_STEP_SUMMARY}"
+              exit 0
+            fi
+          done
+          echo "Replays: stub recordings (no full live run for this content)" >> "${GITHUB_STEP_SUMMARY}"
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           package_json_file: web/package.json
