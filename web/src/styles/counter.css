@@ -1,149 +1,398 @@
-/* Con bar and slots */
-.slots {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+/* The wooden counter under Penny's window: four spots, the prop trays and the bell. Desktop puts
+   the bell beside the spots; on a phone it rides at the bottom of the screen while the player
+   picks props from the trays. */
+.counter {
+  background: linear-gradient(180deg, var(--wood-hi) 0%, var(--wood) 40%, var(--wood-lo) 100%);
+  border-top: 6px solid var(--brass-rail);
+  color: var(--on-wood);
+}
+
+.counter-inner {
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: 1rem 1rem 1.5rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: 0.75rem;
+  gap: 1rem 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "spots"
+    "trays"
+    "bell";
 }
 
-.slot {
-  min-height: 5.5rem;
-  border: 2px dashed var(--border);
-  border-radius: var(--radius);
-  padding: 0.6rem 0.75rem;
+.spots-area {
+  grid-area: spots;
+}
+
+.trays {
+  grid-area: trays;
   display: grid;
-  align-content: start;
-  gap: 0.35rem;
+  gap: 0.75rem 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.slot[data-filled="true"] {
-  border-style: solid;
-  border-color: var(--brass);
-}
-
-.slot[data-drop-target="true"] {
-  border-color: var(--focus);
-  background: var(--surface-raised);
-}
-
-.slot-label {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-}
-
-.slot-tile {
+.bell-area {
+  grid-area: bell;
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 700;
+  gap: 0.25rem 0.75rem;
 }
 
-.slot-clear {
+@media (min-width: 48rem) {
+  .trays {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .counter-inner {
+    padding: 1.25rem 1.5rem 1.75rem;
+    grid-template-columns: minmax(0, 1fr) 13rem;
+    grid-template-areas:
+      "spots bell"
+      "trays trays";
+  }
+
+  .trays {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .bell-area {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+/* On a phone the bell stays in reach at the bottom while the trays scroll past. */
+@media (max-width: 63.99rem) {
+  .bell-area {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin: 0 -1rem -1.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--wood-lo);
+    border-top: 2px solid var(--brass-rail);
+  }
+
+  .bell {
+    width: 3.5rem;
+  }
+}
+
+.spot-count {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--on-wood);
+}
+
+
+.spot-count {
+  margin-top: 0.4rem;
+}
+
+/* Spots */
+.spots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 48rem) {
+  .spots {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.spot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.spot-label,
+.tray h3 {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--on-wood);
+}
+
+.spot-place {
+  flex: 1;
+  min-height: 5.5rem;
+  border-radius: 12px;
+  border: 2px solid var(--brass-rail);
+  background: rgb(0 0 0 / 22%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  transition:
+    background 150ms,
+    box-shadow 150ms;
+}
+
+.spot[data-awaiting] .spot-place {
+  border-style: dashed;
+  border-color: #f3d98c;
+  background: rgb(243 217 140 / 14%);
+  box-shadow: 0 0 0 4px rgb(243 217 140 / 20%);
+}
+
+.spot[data-drop-target] .spot-place {
+  background: rgb(243 217 140 / 28%);
+  box-shadow: 0 0 0 6px rgb(243 217 140 / 35%);
+}
+
+.spot-empty {
+  font-size: 0.875rem;
+  color: var(--on-wood);
+  text-align: center;
+}
+
+.spot[data-awaiting] .spot-empty {
+  color: #f3d98c;
+  font-weight: 600;
+}
+
+.placed {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.35rem 0.35rem 0.7rem;
+  rotate: -1.5deg;
+  box-shadow: 0 4px 10px rgb(0 0 0 / 35%);
+  animation: put-down 180ms ease-out;
+}
+
+@keyframes put-down {
+  from {
+    scale: 1.08;
+    rotate: -4deg;
+  }
+}
+
+.placed-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.placed-label {
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.placed-blurb {
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.spot-clear {
   min-width: 44px;
-  font-size: 1.25rem;
+  padding: 0;
+  font-size: 1.3rem;
   line-height: 1;
+  background: rgb(0 0 0 / 8%);
+  border-color: currentcolor;
+  color: inherit;
 }
 
-.slot-empty {
-  color: var(--text-muted);
+/* Trays */
+.tray h3 {
+  margin-bottom: 0.4rem;
 }
 
-.slot-count {
-  margin: 0.5rem 0 0;
-  color: var(--text-muted);
-}
-
-/* Trays and tiles */
-.tray {
-  margin-top: 0.75rem;
+.tray-for {
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: none;
 }
 
 .tiles {
   list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
   gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tiles[data-kind="slip"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .tile {
   width: 100%;
   height: 100%;
+  min-height: 52px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
   text-align: left;
-  display: grid;
-  align-content: start;
-  gap: 0.15rem;
+  hyphens: auto;
+  overflow-wrap: break-word;
+  cursor: grab;
   touch-action: manipulation;
   user-select: none;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 35%);
+  transition:
+    rotate 120ms,
+    box-shadow 120ms;
 }
 
-.tile[aria-pressed="true"] {
-  border: 2px solid var(--brass);
-  background: var(--surface);
+/* Props lie a little crooked on the counter. dnd-kit owns transform, translate and scale while a
+   prop is lifted, so the tilt and lift use rotate and box-shadow. */
+.tiles li:nth-child(6n + 1) .tile {
+  rotate: -2deg;
 }
 
-.tile[aria-pressed="true"] .tile-label::after {
-  content: " ✓";
-  color: var(--brass-strong);
+.tiles li:nth-child(6n + 2) .tile {
+  rotate: 1.5deg;
 }
 
-.tile[data-dragging="true"] {
-  opacity: 0.85;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+.tiles li:nth-child(6n + 3) .tile {
+  rotate: -1deg;
 }
 
-.tile-label {
-  font-weight: 700;
+.tiles li:nth-child(6n + 4) .tile {
+  rotate: 2deg;
 }
 
-.tile-blurb {
-  font-size: 0.875rem;
-  color: var(--text-muted);
+.tiles li:nth-child(6n + 5) .tile {
+  rotate: -1.5deg;
 }
 
-/* Call: stays in reach at the bottom of the screen while the player picks tiles. */
-.call {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  margin-top: var(--gap);
-  padding: 0.75rem 0;
-  background: var(--bg);
-  border-top: 1px solid var(--border);
+.tiles li:nth-child(6n) .tile {
+  rotate: 1deg;
+}
+
+.tile:not(:disabled):hover {
+  rotate: 0deg;
+  box-shadow: 0 6px 14px rgb(0 0 0 / 45%);
+}
+
+.tile[data-dnd-dragging] {
+  cursor: grabbing;
+  rotate: -5deg;
+  box-shadow: 0 16px 30px rgb(0 0 0 / 55%);
+}
+
+/* Prop kinds, for tiles in the trays and for props placed on a spot. */
+:is(.tile, .placed)[data-kind="badge"] {
+  background: #e9e1cf;
+  color: #1b2b26;
+  border: none;
+  border-radius: 10px;
+}
+
+.tile[data-kind="badge"] {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
   align-items: center;
+  gap: 0.45rem;
 }
 
-.call .hint {
-  margin: 0;
+.tile[data-kind="badge"]::before {
+  content: "";
+  flex: none;
+  width: 0.8rem;
+  height: 1rem;
+  border-radius: 2px;
+  background: #2f5f8c;
 }
 
-.con-bar,
-.trays {
-  max-width: 88rem;
-  margin: var(--gap) auto 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1rem;
+:is(.tile, .placed)[data-kind="paper"] {
+  /* A folded corner, drawn with gradients so the focus ring is never clipped. */
+  background:
+    linear-gradient(225deg, transparent 0.55rem, #d8cfb8 0.55rem, #d8cfb8 0.8rem, transparent 0.8rem) top right / 0.8rem 0.8rem no-repeat,
+    linear-gradient(225deg, transparent 0.57rem, #f6f1e4 0.57rem);
+  color: #1b2b26;
+  border: none;
+  border-radius: 2px;
 }
 
-.call {
-  max-width: 88rem;
-  margin-inline: auto;
+:is(.tile, .placed)[data-kind="card"] {
+  background: #263a52;
+  color: #f3ecd9;
+  border: 1px solid #c9a24a;
+  border-radius: 8px;
 }
 
-@media (max-width: 40rem) {
-  .tiles,
-  .slots {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+:is(.tile, .placed)[data-kind="slip"] {
+  background: #dfe9d6;
+  color: #1b2b26;
+  border: 2px dashed #5d7a52;
+  border-radius: 6px;
+}
+
+/* A prop already on the counter leaves its outline in the tray. */
+.tile[aria-pressed="true"] {
+  background: transparent;
+  color: var(--on-wood);
+  border: 2px dashed var(--on-wood);
+  box-shadow: none;
+}
+
+.tile[aria-pressed="true"]::before {
+  background: transparent;
+  border: 2px solid var(--on-wood);
+}
+
+.tile[aria-pressed="true"]::after {
+  content: " ✓";
+}
+
+/* The bell */
+.bell {
+  width: 4.75rem;
+  height: auto;
+  display: block;
+}
+
+.bell-dome {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.bell[data-ringing] .bell-dome {
+  animation: bell-ring 0.5s ease-in-out 3;
+}
+
+@keyframes bell-ring {
+  25% {
+    transform: rotate(-9deg);
   }
+  75% {
+    transform: rotate(9deg);
+  }
+}
+
+.bell-button {
+  border-radius: 999px;
+}
+
+.bell-button:disabled {
+  background: #3b2a14;
+  border-color: #8a6a24;
+  color: var(--on-wood);
+  opacity: 1;
+}
+
+.bell-hint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--on-wood);
 }

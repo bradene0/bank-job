@@ -52,10 +52,10 @@ describe("App", () => {
     const backend = renderGame();
     await screen.findByText(/Live: Penny is at her desk/);
 
-    const call = screen.getByRole("button", { name: "Make the call" });
+    const call = screen.getByRole("button", { name: "Ring the bell" });
     expect(call).toBeDisabled();
     await buildCon(user, WINNING_CON);
-    expect(screen.getByText("4 of 4 slots filled")).toBeInTheDocument();
+    expect(screen.getByText("4 of 4 spots filled")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Branch Manager/ })).toHaveAttribute("aria-pressed", "true");
     await user.click(call);
 
@@ -88,7 +88,7 @@ describe("App", () => {
     tile.focus();
     await user.keyboard("{Enter}");
     expect(tile).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("1 of 4 slots filled")).toBeInTheDocument();
+    expect(screen.getByText("1 of 4 spots filled")).toBeInTheDocument();
     expect(await screen.findByText(/Bank Examiner placed in Who you claim to be/)).toBeInTheDocument();
 
     await user.keyboard(" ");
@@ -96,7 +96,7 @@ describe("App", () => {
 
     await user.keyboard("{Enter}");
     await user.click(screen.getByRole("button", { name: "Remove Bank Examiner from Who you claim to be" }));
-    expect(screen.getByText("0 of 4 slots filled")).toBeInTheDocument();
+    expect(screen.getByText("0 of 4 spots filled")).toBeInTheDocument();
   });
 
   it("falls back to a recorded result when the agent is down, without a dead end", async () => {
@@ -107,7 +107,7 @@ describe("App", () => {
     });
     await screen.findByText(/Live: Penny is at her desk/);
     await buildCon(user, WINNING_CON);
-    await user.click(screen.getByRole("button", { name: "Make the call" }));
+    await user.click(screen.getByRole("button", { name: "Ring the bell" }));
 
     expect(await screen.findByRole("heading", { name: "Penny said no." })).toBeInTheDocument();
     expect(screen.getByText("Recorded result")).toBeInTheDocument();
@@ -120,12 +120,12 @@ describe("App", () => {
     await screen.findByText(/Waking the bank/);
 
     await buildCon(user, WINNING_CON);
-    await user.click(screen.getByRole("button", { name: "Make the call" }));
+    await user.click(screen.getByRole("button", { name: "Ring the bell" }));
     expect(await screen.findByRole("heading", { name: "No recording of that call yet." })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Level 1: Front Desk, 8 of 8 nerve left" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^Bank Examiner/ }));
-    await user.click(screen.getByRole("button", { name: "Make the call" }));
+    await user.click(screen.getByRole("button", { name: "Ring the bell" }));
     expect(await screen.findByRole("heading", { name: "The wire went through." })).toBeInTheDocument();
     expect(screen.getByText("Recorded result")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Level 1: Front Desk, 7 of 8 nerve left, cracked" })).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe("App", () => {
     renderGame({ attempt: () => json(429, { status: 429 }) });
     await screen.findByText(/Live: Penny is at her desk/);
     await buildCon(user, WINNING_CON);
-    await user.click(screen.getByRole("button", { name: "Make the call" }));
+    await user.click(screen.getByRole("button", { name: "Ring the bell" }));
     expect(await screen.findByRole("heading", { name: "You're out of nerve for this level." })).toBeInTheDocument();
   });
 });

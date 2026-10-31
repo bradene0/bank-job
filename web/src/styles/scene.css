@@ -108,6 +108,11 @@
     align-self: start;
   }
 
+  /* Leave room for the counter on a laptop screen; the window art scales down inside its box. */
+  .teller-window {
+    max-height: max(22rem, calc(100svh - 25rem));
+  }
+
   .hud-right {
     justify-content: center;
     padding-bottom: 3rem;

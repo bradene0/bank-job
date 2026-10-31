@@ -78,7 +78,7 @@
 
 /* Keep focused or scrolled-to elements clear of the sticky call bar (WCAG 2.4.11). */
 html {
-  scroll-padding-bottom: 6rem;
+  scroll-padding-bottom: 8rem;
 }
 
 body {

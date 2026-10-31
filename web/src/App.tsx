@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import defaultContent from "virtual:bankjob-content";
 import { ApiClient } from "./api/client";
-import { Board } from "./components/Board";
 import { Leaderboard, StatusBadge, ThemeToggle } from "./components/Chrome";
+import { Counter } from "./components/Counter";
 import { Goal, LevelPlaque, Rules, SpeechBubble } from "./components/Hud";
 import { Result } from "./components/Result";
 import { ArtDefs } from "./components/scene/ArtDefs";
@@ -10,7 +10,6 @@ import type { Pose } from "./components/scene/Penny";
 import { TellerWindow } from "./components/scene/TellerWindow";
 import { UnderTheHood } from "./components/UnderTheHood";
 import type { GameContent } from "./content/types";
-import { filledCount } from "./game/state";
 import { DEFAULT_TIMING, useBackendStatus, type BackendTiming } from "./game/useBackendStatus";
 import { useGame } from "./game/useGame";
 
@@ -37,7 +36,6 @@ export function App({ content = defaultContent, api: apiProp, wake = defaultWake
   const game = useGame(content, api, backend);
   const [announcement, setAnnouncement] = useState("");
   const announce = useCallback((message: string) => setAnnouncement(message), []);
-  const ready = filledCount(game.slots) === 4;
   const level = content.levels.find((l) => l.id === game.levelId) ?? content.levels[0];
   if (!level) throw new Error("content has no levels");
   const pose: Pose = game.playing ? "thinking" : (game.played?.outcome ?? "idle");
@@ -85,29 +83,16 @@ export function App({ content = defaultContent, api: apiProp, wake = defaultWake
             </div>
           </div>
         </section>
-        <Board
+        <Counter
           content={content}
           slots={game.slots}
-          disabled={game.playing}
+          busy={game.playing}
+          live={backend.status === "live"}
           onPlace={game.placeTile}
           onClear={game.clearSlot}
+          onCall={() => void game.makeTheCall()}
           announce={announce}
         />
-        <div className="call">
-          <button
-            type="button"
-            className="primary"
-            disabled={!ready || game.playing}
-            aria-describedby="call-hint"
-            onClick={() => void game.makeTheCall()}
-          >
-            {game.playing ? "Penny is thinking…" : "Make the call"}
-          </button>
-          <p id="call-hint" className="hint">
-            {ready ? "Your con is ready." : `Fill all four slots first (${filledCount(game.slots)} of 4).`}{" "}
-            {backend.status === "live" ? "" : "The bank is closed, so you'll get a recorded result."}
-          </p>
-        </div>
         {game.played && (
           <UnderTheHood played={game.played} api={api} token={game.session?.token ?? null} />
         )}
