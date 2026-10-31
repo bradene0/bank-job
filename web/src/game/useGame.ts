@@ -74,6 +74,8 @@ export function useGame(
   content: GameContent,
   api: ApiClient,
   backend: { status: BackendStatus; markUnreachable: () => void },
+  /** Easy mode: every call plays its recording (the scripted teller), even when the bank is open. */
+  easy = false,
 ) {
   const [levelId, setLevelId] = useState(1);
   const [slots, setSlots] = useState<Slots>(EMPTY_SLOTS);
@@ -237,7 +239,7 @@ export function useGame(
     setPlaying(true);
     setNotice(null);
     try {
-      if (!live) {
+      if (!live || easy) {
         await playRecorded(combo, null);
         return;
       }
@@ -258,7 +260,7 @@ export function useGame(
     } finally {
       setPlaying(false);
     }
-  }, [slots, playing, live, playRecorded, playLive, levelId, markUnreachable]);
+  }, [slots, playing, live, easy, playRecorded, playLive, levelId, markUnreachable]);
 
   return {
     levelId,

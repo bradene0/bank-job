@@ -282,3 +282,10 @@ footer {
     scroll-behavior: auto !important;
   }
 }
+
+/* Topbar toggles (easy mode, light theme) show when they are on. */
+.topbar-tools button[aria-pressed="true"] {
+  background: var(--brass);
+  border-color: var(--brass-strong);
+  color: var(--on-brass);
+}

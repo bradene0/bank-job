@@ -54,6 +54,37 @@ export function ThemeToggle() {
   );
 }
 
+const EASY_KEY = "bankjob.easy";
+
+function storedEasy(): boolean {
+  try {
+    return localStorage.getItem(EASY_KEY) === "on";
+  } catch {
+    return false;
+  }
+}
+
+/** Easy mode, remembered per viewer like the theme. */
+export function useEasyMode() {
+  const [easy, setEasy] = useState<boolean>(storedEasy);
+  useEffect(() => {
+    try {
+      localStorage.setItem(EASY_KEY, easy ? "on" : "off");
+    } catch {
+      // not remembered; fine
+    }
+  }, [easy]);
+  return [easy, setEasy] as const;
+}
+
+export function EasyModeToggle({ easy, onChange }: { easy: boolean; onChange: (easy: boolean) => void }) {
+  return (
+    <button type="button" aria-pressed={easy} onClick={() => onChange(!easy)}>
+      Easy mode
+    </button>
+  );
+}
+
 /** Top crews from the Kafka-fed projection, fetched each time the sheet opens. */
 export function Leaderboard({ api, live }: { api: ApiClient; live: boolean }) {
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);

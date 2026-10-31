@@ -24,7 +24,10 @@ async function buildCon(user: ReturnType<typeof userEvent.setup>, labels: string
 
 const WINNING_CON = ["Branch Manager", "Urgent Fraud Alert", "Authority Pressure", "Small Wire"];
 
-beforeEach(() => sessionStorage.clear());
+beforeEach(() => {
+  sessionStorage.clear();
+  localStorage.clear();
+});
 afterEach(() => vi.unstubAllGlobals());
 
 describe("App", () => {
@@ -168,6 +171,21 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Leaderboard" }));
     const sheet = screen.getByRole("dialog", { name: "Leaderboard" });
     expect(await within(sheet).findByText(/No crew has pulled off a heist yet/)).toBeInTheDocument();
+  });
+
+  it("easy mode plays the recording even when the bank is open, and never calls the model", async () => {
+    const user = userEvent.setup();
+    const backend = renderGame({ replays: { "p1.x1.t3.y1": replayOf("p1.x1.t3.y1", "won") } });
+    await screen.findByText(/Live: Penny is at her desk/);
+    const easy = screen.getByRole("button", { name: "Easy mode" });
+    expect(easy).toHaveAttribute("aria-pressed", "false");
+    await user.click(easy);
+    expect(easy).toHaveAttribute("aria-pressed", "true");
+
+    await buildCon(user, WINNING_CON);
+    await user.click(screen.getByRole("button", { name: "Ring the bell" }));
+    expect(await screen.findByRole("heading", { name: "The wire went through." })).toBeInTheDocument();
+    expect(backend.requests.some((r) => r.url.endsWith("/v1/attempts"))).toBe(false);
   });
 
   it("switches to live play once the bank wakes up", async () => {

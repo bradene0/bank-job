@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test } from "./fixtures";
@@ -70,4 +71,24 @@ test("when the model budget is spent, a live call plays its recording and says w
   await expect(page.getByText(/this month's model budget is spent/)).toBeVisible();
   // game-api refunded the nerve, so the session still has all of it.
   await expect(page.getByRole("button", { name: /^Level 1: Front Desk, 8 of 8 nerve left/ })).toBeVisible();
+});
+
+test("easy mode plays the recording while the bank is open", async ({ page }) => {
+  await page.route(`${API}/**`, (route) => route.continue());
+  const attempts: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/v1/attempts")) attempts.push(r.url());
+  });
+  await page.goto("/");
+  await expect(page.getByText("Live: Penny is at her desk")).toBeVisible();
+  await page.getByRole("button", { name: "Easy mode" }).click();
+  await expect(page.getByRole("button", { name: "Easy mode" })).toHaveAttribute("aria-pressed", "true");
+  for (const label of ["Branch Manager", "Urgent Fraud Alert", "Authority Pressure", "Small Wire ($200)"]) {
+    await tile(page, label).click();
+  }
+  await bell(page).click();
+  await expect(page.locator("#result-title")).toHaveText("The wire went through.");
+  expect(attempts).toEqual([]);
+  const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+  expect(axe.violations.map((v) => v.id)).toEqual([]);
 });

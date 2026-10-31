@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import defaultContent from "virtual:bankjob-content";
 import { ApiClient } from "./api/client";
-import { Leaderboard, StatusBadge, ThemeToggle } from "./components/Chrome";
+import { EasyModeToggle, Leaderboard, StatusBadge, ThemeToggle, useEasyMode } from "./components/Chrome";
 import { Counter } from "./components/Counter";
 import { Goal, LevelPlaque, Rules, SpeechBubble } from "./components/Hud";
 import { Passbook } from "./components/Passbook";
@@ -43,7 +43,8 @@ export function App({
 }: AppProps) {
   const api = useMemo(() => apiProp ?? new ApiClient(API_URL), [apiProp]);
   const backend = useBackendStatus(api, wake, timing);
-  const game = useGame(content, api, backend);
+  const [easy, setEasy] = useEasyMode();
+  const game = useGame(content, api, backend, easy);
   const [announcement, setAnnouncement] = useState("");
   const [sheet, setSheet] = useState<"hood" | "leaderboard" | null>(null);
   const announce = useCallback((message: string) => setAnnouncement(message), []);
@@ -72,6 +73,7 @@ export function App({
         </div>
         <div className="topbar-tools">
           <StatusBadge status={backend.status} />
+          <EasyModeToggle easy={easy} onChange={setEasy} />
           <ThemeToggle />
         </div>
       </header>
