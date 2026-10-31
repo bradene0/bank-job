@@ -8,12 +8,22 @@ import {
 } from "../api/client";
 import type { Session } from "../api/types";
 import { SLOT_KEYS, type GameContent, type SlotKey } from "../content/types";
-import { EMPTY_SLOTS, clear, comboId, place, score, type Played, type Slots } from "./state";
+import {
+  EMPTY_SLOTS,
+  clear,
+  comboId,
+  place,
+  score,
+  type PassbookLine,
+  type Played,
+  type Slots,
+} from "./state";
 import type { BackendStatus } from "./useBackendStatus";
 
 const SESSION_KEY = "bankjob.session";
 const PROGRESS_KEY = "bankjob.progress";
 const CRACKED_KEY = "bankjob.cracked";
+const PASSBOOK_KEY = "bankjob.passbook";
 
 /** Levels the live session has cracked: they score once per session, like the leaderboard. */
 interface Cracked {
@@ -75,9 +85,11 @@ export function useGame(
     () => readJson<Progress>(PROGRESS_KEY) ?? { beaten: [], replayNerve: initialNerve(content) },
   );
   const [cracked, setCracked] = useState<Cracked | null>(() => readJson<Cracked>(CRACKED_KEY));
+  const [passbook, setPassbook] = useState<PassbookLine[]>(() => readJson<PassbookLine[]>(PASSBOOK_KEY) ?? []);
   const sessionRequest = useRef<Promise<Session> | null>(null);
 
   useEffect(() => writeJson(PROGRESS_KEY, progress), [progress]);
+  useEffect(() => writeJson(PASSBOOK_KEY, passbook), [passbook]);
   useEffect(() => {
     if (cracked) writeJson(CRACKED_KEY, cracked);
   }, [cracked]);
@@ -161,7 +173,10 @@ export function useGame(
         cached: false,
         points: null,
       });
-      if (record.outcome === "won") won(levelId);
+      if (record.outcome === "won") {
+        won(levelId);
+        setPassbook((p) => [...p, { level: levelId, amountCents: record.amountCents, points: 0, recorded: true }]);
+      }
     },
     [levelId, progress.replayNerve, won],
   );
@@ -204,7 +219,13 @@ export function useGame(
         cached: result.cached,
         points,
       });
-      if (result.outcome === "won") won(levelId);
+      if (result.outcome === "won") {
+        won(levelId);
+        setPassbook((p) => [
+          ...p,
+          { level: levelId, amountCents: result.amountCents, points: points.total, recorded: false },
+        ]);
+      }
     },
     [api, content, cracked, ensureSession, levelId, won],
   );
@@ -252,6 +273,7 @@ export function useGame(
     notice,
     nerve,
     beaten: progress.beaten,
+    passbook,
     session: live ? session : null,
   };
 }

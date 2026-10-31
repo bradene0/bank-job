@@ -25,6 +25,16 @@ export interface Played {
   points: Points | null;
 }
 
+/** One line in the passbook: a wire that reached the player's account. */
+export interface PassbookLine {
+  level: number;
+  amountCents: number;
+  /** What the win scored (0 for a repeat win or a recorded result). */
+  points: number;
+  /** Played from a recording while the bank was closed: shown, never scored. */
+  recorded: boolean;
+}
+
 /** Points per nerve left when a level is cracked. */
 export const NERVE_BONUS = 10;
 

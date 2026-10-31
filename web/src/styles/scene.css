@@ -293,3 +293,103 @@
   font-size: 0.9rem;
   color: var(--text-muted);
 }
+
+/* The passbook: a cream ledger page with ruled lines. */
+.passbook {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: #8a6a24;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 30%);
+}
+
+.passbook-title {
+  margin: 0 0 0.3rem;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.15rem;
+  color: #6b4a12;
+}
+
+.passbook-account {
+  font-family: var(--font);
+  font-size: 0.875rem;
+  color: #4f4a40;
+}
+
+.passbook-totals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0 1rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid #2f5f4a;
+}
+
+.passbook-totals p {
+  margin: 0;
+}
+
+.passbook-key {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #4f4a40;
+}
+
+.passbook-amount {
+  font-family: var(--mono);
+  font-size: 1.35rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #1d5a3c;
+}
+
+.passbook-score strong {
+  font-size: 1.2rem;
+  color: #6b4a12;
+}
+
+.passbook-empty {
+  margin: 0.4rem 0 0;
+  font-size: 0.875rem;
+  color: #4f4a40;
+}
+
+.passbook-lines {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.passbook-lines th,
+.passbook-lines td {
+  padding: 0.2rem 0;
+  border-bottom: 1px solid #b7c9bd;
+  text-align: left;
+  font-weight: 400;
+}
+
+.passbook-lines td {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding-left: 0.5rem;
+  white-space: nowrap;
+}
+
+.passbook-lines tr:last-child > * {
+  animation: ink-in 600ms ease-out;
+}
+
+@keyframes ink-in {
+  from {
+    color: transparent;
+  }
+}
+
+.passbook-earlier td {
+  font-family: var(--font);
+  text-align: left;
+  color: #4f4a40;
+}

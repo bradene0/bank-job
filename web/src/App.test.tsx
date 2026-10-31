@@ -68,6 +68,12 @@ describe("App", () => {
     const resultRegion = screen.getByRole("region", { name: "The wire went through." });
     expect(within(resultRegion).getByText(/transferred \$200\.00 to your account/)).toBeInTheDocument();
     expect(resultRegion).not.toHaveTextContent("BV-MULE-01");
+    // The passbook: one line for the wire, the level's points plus 7 nerve left x 10, and the score.
+    const passbook = screen.getByRole("region", { name: /^Passbook/ });
+    expect(within(passbook).getByRole("rowheader", { name: "Front Desk" })).toBeInTheDocument();
+    expect(within(passbook).getByText("+170 pts")).toBeInTheDocument();
+    expect(within(passbook).getByText("170")).toBeInTheDocument();
+    expect(within(passbook).getAllByText("$200.00").length).toBeGreaterThan(0);
     const attempt = backend.requests.find((r) => r.url.endsWith("/v1/attempts"));
     expect(JSON.parse(attempt?.body ?? "null")).toEqual({
       level: 1,
@@ -146,6 +152,10 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "The wire went through." })).toBeInTheDocument();
     expect(screen.getByText("Recorded result")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Level 1: Front Desk, 7 of 8 nerve left, cracked" })).toBeInTheDocument();
+    // A recorded win goes in the passbook, but never scores.
+    const passbook = screen.getByRole("region", { name: /^Passbook/ });
+    expect(within(passbook).getByText("recorded")).toBeInTheDocument();
+    expect(within(passbook).getByText("0")).toBeInTheDocument();
   });
 
   it("switches to live play once the bank wakes up", async () => {

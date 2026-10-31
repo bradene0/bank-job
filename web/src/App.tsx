@@ -4,6 +4,7 @@ import { ApiClient } from "./api/client";
 import { Leaderboard, StatusBadge, ThemeToggle } from "./components/Chrome";
 import { Counter } from "./components/Counter";
 import { Goal, LevelPlaque, Rules, SpeechBubble } from "./components/Hud";
+import { Passbook } from "./components/Passbook";
 import { Result } from "./components/Result";
 import { ArtDefs } from "./components/scene/ArtDefs";
 import { TellerWindow } from "./components/scene/TellerWindow";
@@ -98,6 +99,12 @@ export function App({
               />
             </div>
             <div className="hud hud-right">
+              <Passbook
+                content={content}
+                // The deposit lands when Penny's performance ends, not before.
+                lines={script.acting && game.played?.outcome === "won" ? game.passbook.slice(0, -1) : game.passbook}
+                reducedMotion={reducedMotion}
+              />
               {busy ? (
                 <SpeechBubble level={level.id} line={script.beat.line} />
               ) : script.revealed || game.notice ? (
