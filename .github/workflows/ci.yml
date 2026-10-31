@@ -250,7 +250,7 @@ jobs:
             | jq -e '.outcome != "won"'
       - name: One attempt, one connected trace (browser -> game-api -> agent -> MCP -> ledger -> Kafka -> consumers)
         run: python3 infra/compose/check_trace.py
-      - name: Game UI end to end (Playwright + axe; mouse, keyboard and phone, live and replay)
+      - name: Game UI end to end (Playwright + axe; mouse, keyboard, phone, WebKit and reduced motion; live and replay)
         # The browsers come in Microsoft's image, pinned to the same Playwright version as the
         # lockfile. Host networking: the game on 5173 talks to game-api on 8080, as a player's would.
         run: |

@@ -17,5 +17,9 @@ export default defineConfig({
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
     // A phone: touch input and a narrow viewport (Chromium with Pixel 7 emulation).
     { name: "phone", use: { ...devices["Pixel 7"] } },
+    // Safari's engine on an iPhone-sized touch screen.
+    { name: "webkit-phone", use: { ...devices["iPhone 15"] } },
+    // A player who asked the OS for less motion.
+    { name: "reduced-motion", use: { ...devices["Desktop Chrome"], reducedMotion: "reduce" } },
   ],
 });
