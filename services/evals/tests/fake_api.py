@@ -109,6 +109,7 @@ class FakeGameApi:
         self.trace_polls: dict[str, int] = {}
         self.trace_lag_polls = trace_lag_polls  # polls before a trace is complete
         self.unavailable: Callable[[int, str], bool] = lambda level, combo: False
+        self.trace_failures = 0  # trace reads that answer 503 before the store recovers
         self.attempts = 0
 
     def transport(self) -> httpx2.MockTransport:
@@ -127,6 +128,9 @@ class FakeGameApi:
             return self._attempt(request)
         if path.startswith("/v1/traces/"):
             trace_id = path.rsplit("/", 1)[1]
+            if self.trace_failures > 0:
+                self.trace_failures -= 1
+                return httpx2.Response(503, json={"title": "Service Unavailable", "status": 503})
             polls = self.trace_polls[trace_id] = self.trace_polls.get(trace_id, 0) + 1
             trace = self.traces[trace_id]
             if polls <= self.trace_lag_polls:

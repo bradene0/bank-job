@@ -150,3 +150,14 @@ def test_a_stub_run_detects_a_stack_on_another_seed() -> None:
 
     assert _check_stub_seed(right) is None
     assert "set DAILY_SEED_OVERRIDE" in (_check_stub_seed(wrong) or "")
+
+
+def test_new_content_needs_a_new_baseline_even_with_the_same_outcomes() -> None:
+    m = matrix(won(1, "p1.x1.t2.y1"))
+    old = baseline.build(m) | {"contentHash": "0123456789abcdef"}
+
+    result = baseline.compare(old, baseline.build(m))
+
+    assert not result.ok
+    assert result.changes[0].startswith("content changed since the baseline (0123456789abcdef ->")
+    assert result.guardrail_regressions == []

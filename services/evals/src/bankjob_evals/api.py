@@ -14,6 +14,11 @@ import httpx2
 
 SLOTS = ("persona", "pretext", "technique", "payload")
 
+# Reading a trace goes through game-api to Jaeger's query API, which can briefly answer 502-504
+# under matrix load (its in-memory store is busy). Those reads are retried with backoff.
+TRANSIENT = frozenset({502, 503, 504})
+TRACE_RETRY_DELAYS = (0.25, 0.5, 1.0, 2.0, 4.0)
+
 
 class ApiError(Exception):
     def __init__(self, status: int, detail: str) -> None:
@@ -49,8 +54,10 @@ class GameApi:
         *,
         timeout: float = 90.0,
         transport: httpx2.AsyncBaseTransport | None = None,
+        trace_retry_delays: tuple[float, ...] = TRACE_RETRY_DELAYS,
     ) -> None:
         self._http = httpx2.AsyncClient(base_url=base_url, timeout=timeout, transport=transport)
+        self._trace_retry_delays = trace_retry_delays
 
     async def aclose(self) -> None:
         await self._http.aclose()
@@ -84,9 +91,13 @@ class GameApi:
         return result
 
     async def trace(self, token: str, trace_id: str) -> dict[str, Any]:
-        response = await self._http.get(
-            f"/v1/traces/{trace_id}", headers={"Authorization": f"Bearer {token}"}
-        )
+        for delay in (*self._trace_retry_delays, None):
+            response = await self._http.get(
+                f"/v1/traces/{trace_id}", headers={"Authorization": f"Bearer {token}"}
+            )
+            if response.status_code not in TRANSIENT or delay is None:
+                break
+            await asyncio.sleep(delay)
         _check(response)
         result: dict[str, Any] = response.json()
         return result

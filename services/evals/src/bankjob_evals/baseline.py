@@ -90,6 +90,13 @@ def compare(
         )
     before, after = _index(baseline["results"]), _index(current["results"])
     changes, regressions = [], []
+    # The baseline records the content it was played on. New content with the same outcomes
+    # still needs a rewrite, so the baseline never claims content it was not played on.
+    if baseline["contentHash"] != current["contentHash"]:
+        changes.append(
+            f"content changed since the baseline ({baseline['contentHash']} ->"
+            f" {current['contentHash']})"
+        )
     for key in sorted(after.keys() if partial else before.keys() | after.keys()):
         old, new = before.get(key, "absent"), after.get(key, "absent")
         if old == new:
