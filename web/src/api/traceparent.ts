@@ -1,5 +1,5 @@
 // The browser starts each attempt's trace: game-api continues this W3C traceparent, so the
-// trace id is known before the request is sent (docs/architecture.md, Observability).
+// trace id is known before the request is sent (ADR-0015).
 
 function randomHex(bytes: number): string {
   const buffer = new Uint8Array(bytes);

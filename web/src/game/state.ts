@@ -72,7 +72,7 @@ export function clear(slots: Slots, key: SlotKey): Slots {
 }
 
 /**
- * Scoring (docs/security-and-levels.md), as game-api's leaderboard projection counts it: the
+ * Scoring (README), as game-api's leaderboard projection counts it: the
  * session's first win on a level cracks it, for the level's points plus NERVE_BONUS per nerve left
  * on that level after the attempt. Repeat wins and every other outcome score nothing.
  */

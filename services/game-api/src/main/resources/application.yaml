@@ -158,5 +158,5 @@ management:
       group:
         readiness:
           include: readinessState,db
-          # The wake flow and compose poll /healthz (docs/contracts/openapi.yaml).
+          # The wake flow and compose poll /healthz (contracts/openapi.yaml).
           additional-path: "server:/healthz"

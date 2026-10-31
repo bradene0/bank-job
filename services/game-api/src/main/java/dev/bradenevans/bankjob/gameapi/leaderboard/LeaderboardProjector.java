@@ -20,11 +20,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Leaderboard projection from AttemptResolved events. Score (docs/security-and-levels.md): a
- * session cracks a level with its first win on it and earns the level's points, plus {@value
- * #NERVE_BONUS} per nerve it had left on that level. Later wins on a cracked level add to the haul
- * (stolen cents, the tie-breaker) but earn no points; other outcomes cost nothing. Failed runs
- * (outcome {@code error}) refund nerve, so they do not count as attempts.
+ * Leaderboard projection from AttemptResolved events. Score (README, Scoring): a session cracks a
+ * level with its first win on it and earns the level's points, plus {@value #NERVE_BONUS} per nerve
+ * it had left on that level. Later wins on a cracked level add to the haul (stolen cents, the
+ * tie-breaker) but earn no points; other outcomes cost nothing. Failed runs (outcome {@code error})
+ * refund nerve, so they do not count as attempts.
  */
 @Component
 class LeaderboardProjector {

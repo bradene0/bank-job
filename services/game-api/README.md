@@ -1,7 +1,7 @@
 # game-api (Java 25, Spring Boot 4.1)
 
 Sessions, auth, tile allowlist, prompt assembly, ledger, policy engine, MCP server, outbox
-publisher, Kafka consumers. See docs/architecture.md and docs/data-model.md.
+publisher, Kafka consumers. See the root README ("How it works") and the Flyway migrations.
 
 ```
 ./mvnw verify            # unit + jqwik property tests, then Testcontainers ITs (needs Docker), Spotless
@@ -39,5 +39,5 @@ transport or the agent, and only the tools and branch provisioning can move mone
 
 Endpoints: `GET /healthz` (readiness, includes Postgres), `POST /v1/sessions`,
 `POST /v1/attempts`, `GET /v1/accounts`, `GET /v1/accounts/{number}`, `GET /v1/hello`.
-Contract: `docs/contracts/openapi.yaml`. Internal: `POST /mcp` (attempt tokens only;
-`docs/contracts/agent-mcp.md`).
+Contract: `contracts/openapi.yaml`. Internal: `POST /mcp` (attempt tokens only;
+`contracts/agent-mcp.md`).

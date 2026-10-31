@@ -64,7 +64,7 @@
     "reason_code": {
       "type": "string",
       "pattern": "^[a-z_]+$",
-      "description": "Stable code, e.g. teller_limit (docs/security-and-levels.md)"
+      "description": "Stable code, e.g. teller_limit (README, Levels)"
     },
     "reason": {
       "type": "string"

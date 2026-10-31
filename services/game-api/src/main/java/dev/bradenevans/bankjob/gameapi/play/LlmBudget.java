@@ -8,9 +8,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * App-level model spend counter (docs/architecture.md, cost guardrails). Near the monthly budget
- * the game stops calling the model and the client switches to replay mode. The Anthropic
- * workspace's own spend limit is the hard backstop.
+ * App-level model spend counter (README, "Cost guardrails"). Near the monthly budget the game stops
+ * calling the model and the client switches to replay mode. The Anthropic workspace's own spend
+ * limit is the hard backstop.
  */
 @Component
 class LlmBudget {

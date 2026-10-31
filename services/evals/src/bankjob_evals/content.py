@@ -13,7 +13,7 @@ import yaml
 # services/evals/src/bankjob_evals/content.py -> repo root
 REPO_ROOT = Path(__file__).resolve().parents[4]
 CONTENT_DIR = REPO_ROOT / "content"
-CONTRACTS_DIR = REPO_ROOT / "docs" / "contracts"
+CONTRACTS_DIR = REPO_ROOT / "contracts"
 
 
 @dataclass(frozen=True)

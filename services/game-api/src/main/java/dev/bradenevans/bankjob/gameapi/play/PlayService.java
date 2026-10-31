@@ -28,9 +28,9 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Plays one attempt end to end (docs/architecture.md, "Request flow"): spend nerve, then either
- * replay a cached model decision or run Penny through the agent, then decide the outcome from the
- * ledger and the recorded policy decisions.
+ * Plays one attempt end to end (README, "How it works"): spend nerve, then either replay a cached
+ * model decision or run Penny through the agent, then decide the outcome from the ledger and the
+ * recorded policy decisions.
  */
 @Service
 class PlayService {

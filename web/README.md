@@ -22,7 +22,7 @@ Live/waking/replay modes as before.
 - **API:** `VITE_API_URL` (default `http://localhost:8080`) and `VITE_WAKE_URL` (optional)
   are baked in at build time. The browser sends tile ids and a level, never text (ADR-0003),
   and starts each attempt's trace with a `traceparent` (ADR-0015).
-- **Replay mode:** `/replay/{level}/{comboId}.json` (`docs/contracts/replay.schema.json`),
+- **Replay mode:** `/replay/{level}/{comboId}.json` (`contracts/replay.schema.json`),
   written by the eval harness. While the API is unreachable the game plays these.
 - **Production:** Workers static assets at `bankjob.bradenevans.dev` (`wrangler.jsonc`,
   headers and CSP in `public/_headers`). `scripts/deploy-worker.sh <replay dir> [summary.json]`

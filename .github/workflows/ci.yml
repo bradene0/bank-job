@@ -296,10 +296,10 @@ jobs:
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.12.18"
-      - name: API contract (Schemathesis against docs/contracts/openapi.yaml)
+      - name: API contract (Schemathesis against contracts/openapi.yaml)
         run: |
           TOKEN=$(curl -fsS -X POST http://127.0.0.1:8080/v1/sessions | jq -r .token)
-          uvx schemathesis==4.32.4 run docs/contracts/openapi.yaml \
+          uvx schemathesis==4.32.4 run contracts/openapi.yaml \
             --url http://127.0.0.1:8080 \
             --header "Authorization: Bearer ${TOKEN}" \
             --exclude-tag planned \

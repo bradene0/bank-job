@@ -1,6 +1,6 @@
 package dev.bradenevans.bankjob.gameapi.policy;
 
-/** A parsed, validated bank tool call (docs/contracts/agent-mcp.md). */
+/** A parsed, validated bank tool call (contracts/agent-mcp.md). */
 public sealed interface ToolRequest {
 
   String tool();

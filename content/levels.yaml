@@ -1,5 +1,5 @@
 # Level definitions. Controls are enforced by the game-api policy engine, never by the LLM.
-# See docs/security-and-levels.md for the narrative and intended weaknesses.
+# The README ("Levels") tells each level's story; the eval matrix measures what gets through.
 
 levels:
   - id: 1

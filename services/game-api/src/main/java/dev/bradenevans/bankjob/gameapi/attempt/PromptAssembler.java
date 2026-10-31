@@ -25,7 +25,7 @@ public class PromptAssembler {
   /** The id of the document the "Hidden Note" tile attaches. */
   public static final String DOCUMENT_ID = "CD-1";
 
-  /** Everything Penny gets for one attempt (docs/contracts/agent-mcp.md). */
+  /** Everything Penny gets for one attempt (contracts/agent-mcp.md). */
   public record Brief(
       UUID attemptId,
       int level,

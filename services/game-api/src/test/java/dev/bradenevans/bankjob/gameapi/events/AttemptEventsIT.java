@@ -37,13 +37,13 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * One attempt over HTTP, as the browser plays it: every event it publishes matches its schema in
- * docs/contracts/events, and every event carries the trace the browser started, through the agent's
- * MCP calls and the ledger, so the attempt is one connected trace.
+ * contracts/events, and every event carries the trace the browser started, through the agent's MCP
+ * calls and the ledger, so the attempt is one connected trace.
  */
 @LiveServerTest
 class AttemptEventsIT {
 
-  private static final Path SCHEMAS = Path.of("../../docs/contracts/events");
+  private static final Path SCHEMAS = Path.of("../../contracts/events");
   // The validator is the one the MCP SDK already ships (mcp-json-jackson3 validates tool input).
   private static final SchemaRegistry REGISTRY =
       SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);

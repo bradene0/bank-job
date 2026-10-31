@@ -7,7 +7,7 @@ UPDATE sessions SET daily_seed = to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM
 ALTER TABLE sessions ALTER COLUMN daily_seed SET NOT NULL;
 
 -- The customer's "memory aid" for their answer, returned by lookup_account. It spells the
--- answer out: the deliberate Level 3 leak (docs/security-and-levels.md).
+-- answer out: the deliberate Level 3 leak (README, Levels).
 ALTER TABLE customers ADD COLUMN security_answer_hint text NOT NULL DEFAULT '';
 ALTER TABLE customers ALTER COLUMN security_answer_hint DROP DEFAULT;
 

@@ -1,4 +1,4 @@
-# Daily rotation (docs/security-and-levels.md). game-api derives one pick from each list
+# Daily rotation (README, "Levels"). game-api derives one pick from each list
 # using the day's seed (the UTC date unless DAILY_SEED_OVERRIDE is set), so the eval
 # matrix, the response cache and the leaderboard all change together at midnight UTC.
 # Everything here is fictional and stylized. Changing this file changes Penny's inputs,

@@ -1,7 +1,7 @@
 # agent (Python 3.14)
 
 Penny (the teller agent) and the Level 5 guardrail agent. An MCP client of game-api; the
-internal contract is in [`docs/contracts/agent-mcp.md`](../../docs/contracts/agent-mcp.md).
+internal contract is in [`contracts/agent-mcp.md`](../../contracts/agent-mcp.md).
 
 The agent takes no text over HTTP. A request carries only game-api's signed attempt token
 (and a review id); the system prompt, customer message and documents are read from

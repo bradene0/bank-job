@@ -3,7 +3,7 @@ package dev.bradenevans.bankjob.gameapi.events;
 import java.util.Arrays;
 import java.util.Optional;
 
-/** Every event game-api publishes, and the topic it goes to (docs/contracts/events/). */
+/** Every event game-api publishes, and the topic it goes to (contracts/events/). */
 public enum EventType {
   ATTEMPT_SUBMITTED("AttemptSubmitted", Topics.ATTEMPTS),
   TOOL_CALLED("ToolCalled", Topics.TOOL_CALLS),

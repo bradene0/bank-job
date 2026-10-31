@@ -1,5 +1,5 @@
 """The run's outputs: matrix.json (one row per played combo), summary.json (counts per level and
-setup, shaped for heatmaps) and replay files (docs/contracts/replay.schema.json)."""
+setup, shaped for heatmaps) and replay files (contracts/replay.schema.json)."""
 
 import json
 from collections import Counter, defaultdict

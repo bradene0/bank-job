@@ -13,9 +13,9 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 /**
- * Calls the agent service (docs/contracts/agent-mcp.md). Requests carry only the attempt token and
- * ids, never text: the agent reads everything it needs from game-api's MCP server. Each call is
- * traced, and its {@code traceparent} header puts the agent's spans in the attempt's trace.
+ * Calls the agent service (contracts/agent-mcp.md). Requests carry only the attempt token and ids,
+ * never text: the agent reads everything it needs from game-api's MCP server. Each call is traced,
+ * and its {@code traceparent} header puts the agent's spans in the attempt's trace.
  */
 @Component
 @RegisterReflectionForBinding({

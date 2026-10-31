@@ -17,9 +17,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
- * Scoring by level (docs/security-and-levels.md), through the real outbox, Kafka and projection: a
- * level's points and the nerve bonus come once, with the first win on it; repeat wins only add to
- * the haul, which breaks ties.
+ * Scoring by level (README, Scoring), through the real outbox, Kafka and projection: a level's
+ * points and the nerve bonus come once, with the first win on it; repeat wins only add to the haul,
+ * which breaks ties.
  */
 @IntegrationTest
 class LeaderboardScoringIT {

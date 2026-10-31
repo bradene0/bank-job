@@ -19,8 +19,8 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * {@code POST /v1/attempts}: the only way to talk to Penny. The body must be exactly
- * docs/contracts/attempt-request.schema.json; any other field, and any tile id outside the
- * allowlist, is a 400. There is no way to send text (ADR-0003).
+ * contracts/attempt-request.schema.json; any other field, and any tile id outside the allowlist, is
+ * a 400. There is no way to send text (ADR-0003).
  */
 @RestController
 class AttemptController {

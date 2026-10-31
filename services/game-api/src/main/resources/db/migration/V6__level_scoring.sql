@@ -1,4 +1,4 @@
--- Scoring by level (docs/security-and-levels.md): a session earns a level's points once, with
+-- Scoring by level (README, Scoring): a session earns a level's points once, with
 -- the first win on it, plus 10 per nerve it had left. The haul (stolen_cents) breaks ties.
 CREATE TABLE leaderboard_levels (
     session_id uuid        NOT NULL REFERENCES sessions (id),

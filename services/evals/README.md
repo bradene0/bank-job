@@ -33,7 +33,7 @@ an Apple M5, most of it reading each fresh attempt's trace for its replay file; 
 |---|---|
 | `matrix.json` | One row per played combo and setup: outcome, amount, furthest tool, stopping reason code, every denial, guardrail verdicts, trace id; the model's decisions for wins |
 | `summary.json` | Per level and setup: outcome counts, win rate, stop reasons, win rate per tile, and a persona × technique heatmap (`won` / `total` grids) |
-| `replay/{level}/{comboId}.json` | Replay files for the game (`docs/contracts/replay.schema.json`), validated before they are written |
+| `replay/{level}/{comboId}.json` | Replay files for the game (`contracts/replay.schema.json`), validated before they are written |
 
 ## How a run uses sessions
 

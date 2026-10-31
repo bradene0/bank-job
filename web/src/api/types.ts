@@ -1,4 +1,4 @@
-// Response shapes from docs/contracts/openapi.yaml.
+// Response shapes from contracts/openapi.yaml.
 
 export type Outcome = "won" | "blocked" | "refused";
 
@@ -63,7 +63,7 @@ export interface LeaderboardEntry {
   stolenCents: number;
 }
 
-/** docs/contracts/replay.schema.json: a recorded attempt served as a static file. */
+/** contracts/replay.schema.json: a recorded attempt served as a static file. */
 export interface ReplayRecord {
   schemaVersion: 1;
   level: number;

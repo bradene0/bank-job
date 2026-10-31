@@ -71,7 +71,7 @@
     "nerve_left": {
       "type": "integer",
       "minimum": 0,
-      "description": "The session's nerve on this level when the outcome committed: the leaderboard's nerve bonus (docs/security-and-levels.md)"
+      "description": "The session's nerve on this level when the outcome committed: the leaderboard's nerve bonus (README, Scoring)"
     }
   }
 }

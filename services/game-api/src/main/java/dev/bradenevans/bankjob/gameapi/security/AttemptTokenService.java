@@ -14,7 +14,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 
 /**
- * Issues Penny's per-attempt token for the MCP server (docs/contracts/agent-mcp.md). Its audience
+ * Issues Penny's per-attempt token for the MCP server (contracts/agent-mcp.md). Its audience
  * differs from the guest token's, so neither token works on the other's endpoints. The subject is
  * the attempt id: every tool call is bound to one attempt and therefore one session and level.
  */

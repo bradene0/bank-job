@@ -4,7 +4,7 @@ from pathlib import Path
 
 from bankjob_evals.combos import DEFAULT_TILES_PATH, SLOT_ORDER, combo_ids, load_tile_ids
 
-SCHEMA_PATH = DEFAULT_TILES_PATH.parents[1] / "docs" / "contracts" / "attempt-request.schema.json"
+SCHEMA_PATH = DEFAULT_TILES_PATH.parents[1] / "contracts" / "attempt-request.schema.json"
 
 
 def test_attack_space_is_864_unique_combos() -> None:
